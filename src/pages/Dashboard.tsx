@@ -4,12 +4,21 @@ import { insightApi } from '../services/insightApi';
 import { KPICard } from '../components/KPICard';
 import { SignalCard } from '../components/SignalCard';
 import type { Dashboard as DashboardType, Signal } from '../types/insight';
+import { useFormatters } from '@so360/formatters';
+import { useShell } from '@so360/shell-context';
 
 export const Dashboard: React.FC = () => {
     const [dashboard, setDashboard] = useState<DashboardType | null>(null);
     const [recentSignals, setRecentSignals] = useState<Signal[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+
+    const { businessSettings } = useShell();
+    const formatters = useFormatters({
+        currency: businessSettings?.base_currency || 'USD',
+        locale: businessSettings?.number_format || 'en-US',
+        timezone: businessSettings?.timezone || 'UTC',
+    });
 
     useEffect(() => {
         loadDashboard();
@@ -153,7 +162,7 @@ export const Dashboard: React.FC = () => {
 
                 {/* Footer */}
                 <div className="mt-8 text-center text-sm text-slate-500">
-                    Last updated: {dashboard ? new Date(dashboard.computed_at).toLocaleString() : 'N/A'}
+                    Last updated: {dashboard ? formatters.formatDateTime(dashboard.computed_at) : 'N/A'}
                 </div>
             </div>
         </div>

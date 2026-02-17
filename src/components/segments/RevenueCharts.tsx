@@ -110,7 +110,7 @@ export const RevenueCharts: React.FC<RevenueChartsProps> = ({ tenantId, orgId })
                         data={funnelData.stages || []}
                         height={320}
                         segmentColor="revenue"
-                        formatValue={(value) => value.toLocaleString()}
+                        formatValue={(value) => formatCurrency(value)}
                     />
                 </ChartContainer>
             )}

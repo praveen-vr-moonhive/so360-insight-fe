@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import federation from '@originjs/vite-plugin-federation';
+import path from 'path';
 
 export default defineConfig({
     base: 'http://localhost:3024/',
@@ -23,9 +24,15 @@ export default defineConfig({
                 '@so360/shell-context': { singleton: true },
                 '@so360/design-system': { singleton: true },
                 '@so360/event-bus': { singleton: true },
+                '@so360/formatters': { singleton: true },
             },
         }),
     ],
+    resolve: {
+        alias: {
+            '@so360/formatters': path.resolve(__dirname, '../../so360-shell-fe/packages/formatters/src'),
+        },
+    },
     build: {
         target: 'esnext',
         minify: false,

@@ -1,6 +1,8 @@
 import React from 'react';
 import { AlertCircle, AlertTriangle, Info, CheckCircle } from 'lucide-react';
 import type { Signal } from '../types/insight';
+import { useFormatters } from '@so360/formatters';
+import { useShell } from '@so360/shell-context';
 
 interface SignalCardProps {
     signal: Signal;
@@ -8,6 +10,13 @@ interface SignalCardProps {
 }
 
 export const SignalCard: React.FC<SignalCardProps> = ({ signal, onResolve }) => {
+    const { businessSettings } = useShell();
+    const formatters = useFormatters({
+        currency: businessSettings?.base_currency || 'USD',
+        locale: businessSettings?.number_format || 'en-US',
+        timezone: businessSettings?.timezone || 'UTC',
+    });
+
     const getSeverityIcon = () => {
         switch (signal.severity) {
             case 'critical':
@@ -58,7 +67,7 @@ export const SignalCard: React.FC<SignalCardProps> = ({ signal, onResolve }) => 
 
             <div className="flex items-center justify-between mt-4">
                 <div className="text-xs text-slate-500">
-                    {new Date(signal.created_at).toLocaleString()}
+                    {formatters.formatDateTime(signal.created_at)}
                 </div>
 
                 {!signal.resolved_at ? (

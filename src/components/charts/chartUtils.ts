@@ -3,6 +3,10 @@
  * Shared utilities for chart components including colors, formatters, and theme constants
  */
 
+// NOTE: formatCurrency, formatDate, formatPercentage are now re-exported from @so360/formatters
+// These functions use business settings (currency, date format, locale) from context
+// For standalone/mock usage, import createFormatters from @so360/formatters
+
 // Color Palettes by Segment
 export const SEGMENT_COLORS = {
     revenue: {
@@ -64,25 +68,12 @@ export const THEME_COLORS = {
     },
 };
 
-// Number Formatters
+// Number Formatters - These use hardcoded locale for non-currency formatting
 export const formatNumber = (value: number, decimals: number = 0): string => {
     return new Intl.NumberFormat('en-US', {
         minimumFractionDigits: decimals,
         maximumFractionDigits: decimals,
     }).format(value);
-};
-
-export const formatCurrency = (value: number, currency: string = 'USD'): string => {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency,
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(value);
-};
-
-export const formatPercentage = (value: number, decimals: number = 1): string => {
-    return `${formatNumber(value, decimals)}%`;
 };
 
 export const formatCompactNumber = (value: number): string => {
@@ -93,27 +84,17 @@ export const formatCompactNumber = (value: number): string => {
     }).format(value);
 };
 
-// Date Formatters
-export const formatDate = (date: Date | string, format: 'short' | 'medium' | 'long' = 'short'): string => {
-    const dateObj = typeof date === 'string' ? new Date(date) : date;
+// Re-export business settings-aware formatters from @so360/formatters
+// These formatters use context: currency, date format, locale
+export { formatCurrency, formatDate } from '@so360/formatters';
 
-    switch (format) {
-        case 'short':
-            return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        case 'medium':
-            return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        case 'long':
-            return dateObj.toLocaleDateString('en-US', {
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric'
-            });
-        default:
-            return dateObj.toLocaleDateString('en-US');
-    }
+// Wrapper for formatPercentage to match chart signature (value, decimals)
+import { formatPercentage as formatPercentageBase } from '@so360/formatters';
+export const formatPercentage = (value: number, decimals: number = 1): string => {
+    return formatPercentageBase(value, 'en-US', decimals);
 };
 
+// DateTime formatter (uses hardcoded locale)
 export const formatDateTime = (date: Date | string): string => {
     const dateObj = typeof date === 'string' ? new Date(date) : date;
     return dateObj.toLocaleString('en-US', {

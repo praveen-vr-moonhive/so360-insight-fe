@@ -5,6 +5,8 @@ import { insightApi } from '../services/insightApi';
 import { TrendChart } from '../components/TrendChart';
 import type { SegmentDetail } from '../types/insight';
 import * as LucideIcons from 'lucide-react';
+import { useFormatters } from '@so360/formatters';
+import { useShell } from '@so360/shell-context';
 
 export const SegmentDetailPage: React.FC = () => {
     const { segmentCode } = useParams<{ segmentCode: string }>();
@@ -12,6 +14,13 @@ export const SegmentDetailPage: React.FC = () => {
     const [segment, setSegment] = useState<SegmentDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+
+    const { businessSettings } = useShell();
+    const formatters = useFormatters({
+        currency: businessSettings?.base_currency || 'USD',
+        locale: businessSettings?.number_format || 'en-US',
+        timezone: businessSettings?.timezone || 'UTC',
+    });
 
     useEffect(() => {
         if (segmentCode) {
@@ -152,8 +161,10 @@ export const SegmentDetailPage: React.FC = () => {
                                 </div>
 
                                 <div className="flex items-baseline gap-2 mb-2">
-                                    <span className="text-3xl font-bold text-slate-100">{kpi.value.toFixed(1)}</span>
-                                    <span className="text-sm text-slate-400">{kpi.unit}</span>
+                                    <span className="text-3xl font-bold text-slate-100">
+                                        {kpi.unit === '$' || kpi.unit === 'USD' ? formatters.formatCurrency(kpi.value) : kpi.value.toFixed(1)}
+                                    </span>
+                                    {kpi.unit !== '$' && kpi.unit !== 'USD' && <span className="text-sm text-slate-400">{kpi.unit}</span>}
                                 </div>
 
                                 {kpi.trend_percentage !== undefined && (

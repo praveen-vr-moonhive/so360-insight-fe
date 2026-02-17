@@ -4,12 +4,21 @@ import { TrendingUp, TrendingDown, Minus, AlertCircle } from 'lucide-react';
 import { insightApi } from '../services/insightApi';
 import type { SegmentSummary } from '../types/insight';
 import * as LucideIcons from 'lucide-react';
+import { useFormatters } from '@so360/formatters';
+import { useShell } from '@so360/shell-context';
 
 export const SegmentOverview: React.FC = () => {
     const navigate = useNavigate();
     const [segments, setSegments] = useState<SegmentSummary[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+
+    const { businessSettings } = useShell();
+    const formatters = useFormatters({
+        currency: businessSettings?.base_currency || 'USD',
+        locale: businessSettings?.number_format || 'en-US',
+        timezone: businessSettings?.timezone || 'UTC',
+    });
 
     useEffect(() => {
         fetchSegments();
@@ -149,9 +158,13 @@ export const SegmentOverview: React.FC = () => {
                                     <div className="text-xs text-slate-500 mb-1">{segment.primary_kpi.kpi_name}</div>
                                     <div className="flex items-baseline gap-2">
                                         <span className="text-2xl font-bold text-slate-100">
-                                            {segment.primary_kpi.value.toFixed(1)}
+                                            {segment.primary_kpi.unit === '$' || segment.primary_kpi.unit === 'USD'
+                                                ? formatters.formatCurrency(segment.primary_kpi.value)
+                                                : segment.primary_kpi.value.toFixed(1)}
                                         </span>
-                                        <span className="text-sm text-slate-400">{segment.primary_kpi.unit}</span>
+                                        {segment.primary_kpi.unit !== '$' && segment.primary_kpi.unit !== 'USD' && (
+                                            <span className="text-sm text-slate-400">{segment.primary_kpi.unit}</span>
+                                        )}
                                     </div>
                                     {segment.primary_kpi.trend_percentage !== undefined && (
                                         <div
