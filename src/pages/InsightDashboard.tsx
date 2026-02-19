@@ -1,27 +1,35 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, RefreshCw } from 'lucide-react';
 import { TabNavigation, type Tab } from '../components/TabNavigation';
 import { AtAGlanceView } from '../components/AtAGlanceView';
 import { SegmentTabContent } from '../components/SegmentTabContent';
+import { DataFreshnessIndicator } from '../components/DataFreshnessIndicator';
 import { insightApi } from '../services/insightApi';
 import type { SegmentSummary } from '../types/insight';
 
-export const InsightDashboard: React.FC = () => {
-    const [searchParams, setSearchParams] = useSearchParams();
-    const [activeTab, setActiveTab] = useState<string>('at-a-glance');
+interface InsightDashboardProps {
+    initialTab?: string;
+}
+
+export const InsightDashboard: React.FC<InsightDashboardProps> = ({ initialTab }) => {
+    const [, setSearchParams] = useSearchParams();
+    const [activeTab, setActiveTab] = useState<string>(initialTab || 'at-a-glance');
     const [segments, setSegments] = useState<SegmentSummary[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [cooldownSeconds, setCooldownSeconds] = useState(0);
+    const [refreshError, setRefreshError] = useState<string | null>(null);
+    const freshnessKey = useRef(0);
 
-    // Initialize active tab from URL param
+    // Sync active tab when navigating between segment routes (e.g. /insight/revenue → /insight/execution)
     useEffect(() => {
-        const tabParam = searchParams.get('tab');
-        if (tabParam) {
-            setActiveTab(tabParam);
+        if (initialTab) {
+            setActiveTab(initialTab);
         }
-    }, []);
+    }, [initialTab]);
 
     // Fetch segments on mount
     useEffect(() => {
@@ -39,6 +47,43 @@ export const InsightDashboard: React.FC = () => {
             setLoading(false);
         }
     };
+
+    const handleRefresh = useCallback(async () => {
+        if (isRefreshing || cooldownSeconds > 0) return;
+        setIsRefreshing(true);
+        setRefreshError(null);
+        try {
+            const result = await insightApi.refreshInsight();
+            if (result.status === 'cooldown') {
+                setCooldownSeconds(result.cooldown_seconds_remaining || 900);
+            } else if (result.success) {
+                setCooldownSeconds(result.cooldown_seconds_remaining || 900);
+                freshnessKey.current += 1;
+                await fetchSegments();
+            } else {
+                setRefreshError('Refresh completed with errors.');
+            }
+        } catch (err: any) {
+            setRefreshError(err.message || 'Refresh failed.');
+        } finally {
+            setIsRefreshing(false);
+        }
+    }, [isRefreshing, cooldownSeconds]);
+
+    // Cooldown countdown timer
+    useEffect(() => {
+        if (cooldownSeconds <= 0) return;
+        const timer = setInterval(() => {
+            setCooldownSeconds(prev => {
+                if (prev <= 1) { clearInterval(timer); return 0; }
+                return prev - 1;
+            });
+        }, 1000);
+        return () => clearInterval(timer);
+    }, [cooldownSeconds]);
+
+    const formatCooldown = (s: number) =>
+        Math.floor(s / 60) > 0 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${s}s`;
 
     const handleTabChange = (tabId: string) => {
         setActiveTab(tabId);
@@ -63,8 +108,8 @@ export const InsightDashboard: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-slate-950 p-8">
-                <div className="max-w-7xl mx-auto">
+            <div className="min-h-full bg-slate-950 p-8">
+                <div>
                     <div className="animate-pulse">
                         <div className="h-10 bg-slate-800 rounded w-64 mb-8"></div>
                         <div className="h-12 bg-slate-900 rounded mb-6"></div>
@@ -81,8 +126,8 @@ export const InsightDashboard: React.FC = () => {
 
     if (error) {
         return (
-            <div className="min-h-screen bg-slate-950 p-8">
-                <div className="max-w-7xl mx-auto">
+            <div className="min-h-full bg-slate-950 p-8">
+                <div>
                     <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-6 flex items-start gap-4">
                         <AlertCircle className="w-6 h-6 text-red-400 flex-shrink-0 mt-0.5" />
                         <div>
@@ -102,14 +147,38 @@ export const InsightDashboard: React.FC = () => {
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 p-8">
-            <div className="max-w-7xl mx-auto">
+        <div className="min-h-full bg-slate-950 p-8">
+            <div>
                 {/* Page Header */}
-                <header className="mb-6">
-                    <h1 className="text-3xl font-bold text-slate-100">Insight Dashboard</h1>
-                    <p className="text-slate-400 mt-1">
-                        Monitor key metrics across all business segments
-                    </p>
+                <header className="mb-6 flex items-start justify-between gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold text-slate-100">Insight Dashboard</h1>
+                        <p className="text-slate-400 mt-1">
+                            Monitor key metrics across all business segments
+                        </p>
+                    </div>
+                    <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                        <DataFreshnessIndicator key={freshnessKey.current} />
+                        <button
+                            onClick={handleRefresh}
+                            disabled={isRefreshing || cooldownSeconds > 0}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                isRefreshing || cooldownSeconds > 0
+                                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                                    : 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-slate-100'
+                            }`}
+                        >
+                            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                            {isRefreshing
+                                ? 'Refreshing...'
+                                : cooldownSeconds > 0
+                                    ? `Refresh in ${formatCooldown(cooldownSeconds)}`
+                                    : 'Refresh'}
+                        </button>
+                        {refreshError && (
+                            <span className="text-xs text-red-400">{refreshError}</span>
+                        )}
+                    </div>
                 </header>
 
                 {/* Tab Navigation */}

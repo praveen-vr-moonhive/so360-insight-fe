@@ -13,6 +13,7 @@ class InsightApiClient {
     private client: AxiosInstance;
     private tenantId: string | null = null;
     private orgId: string | null = null;
+    private accessToken: string | null = null;
 
     constructor() {
         this.client = axios.create({
@@ -30,6 +31,9 @@ class InsightApiClient {
             if (this.orgId) {
                 config.headers['X-Org-Id'] = this.orgId;
             }
+            if (this.accessToken) {
+                config.headers['Authorization'] = `Bearer ${this.accessToken}`;
+            }
             return config;
         });
     }
@@ -40,6 +44,18 @@ class InsightApiClient {
 
     setOrgId(orgId: string) {
         this.orgId = orgId;
+    }
+
+    setAccessToken(token: string) {
+        this.accessToken = token;
+    }
+
+    getAuthHeaders(): Record<string, string> {
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (this.tenantId) headers['X-Tenant-Id'] = this.tenantId;
+        if (this.orgId) headers['X-Org-Id'] = this.orgId;
+        if (this.accessToken) headers['Authorization'] = `Bearer ${this.accessToken}`;
+        return headers;
     }
 
     async getDashboard(): Promise<Dashboard> {
@@ -108,6 +124,20 @@ class InsightApiClient {
 
     async getDataFreshness(): Promise<any> {
         const response = await this.client.get('/data-freshness');
+        return response.data;
+    }
+
+    // ===== ON-DEMAND REFRESH =====
+
+    async refreshInsight(): Promise<{
+        success: boolean;
+        status: 'refreshed' | 'cooldown';
+        message: string;
+        refreshed_at?: string;
+        cooldown_seconds_remaining?: number;
+        summary?: { kpis_computed: number; charts_generated: number; errors: string[] };
+    }> {
+        const response = await this.client.post('/refresh');
         return response.data;
     }
 

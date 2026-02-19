@@ -65,8 +65,15 @@ export const DataFreshnessIndicator: React.FC = () => {
         return 'text-green-400';
     };
 
+    const tooltipTitle = freshness.next_scheduled_refresh
+        ? `Next scheduled refresh: ${new Date(freshness.next_scheduled_refresh).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} UTC`
+        : 'Refreshes every 6 hours';
+
     return (
-        <div className="flex items-center gap-2 text-sm text-slate-400 bg-slate-900/30 rounded-lg px-3 py-2 border border-slate-800">
+        <div
+            className="flex items-center gap-2 text-sm text-slate-400 bg-slate-900/30 rounded-lg px-3 py-2 border border-slate-800"
+            title={tooltipTitle}
+        >
             <Clock className="w-4 h-4" />
             <span>Data updated:</span>
             {freshness.last_computation ? (
@@ -77,7 +84,7 @@ export const DataFreshnessIndicator: React.FC = () => {
                     {getStatusIcon()}
                 </>
             ) : (
-                <span className="text-amber-400 font-medium">No data available</span>
+                <span className="text-amber-400 font-medium">No data — click Refresh</span>
             )}
         </div>
     );
