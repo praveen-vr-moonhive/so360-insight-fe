@@ -43,9 +43,9 @@ export const RevenueCharts: React.FC<RevenueChartsProps> = ({ tenantId, orgId })
                 insightApi.getChartData('revenue', 'aging_buckets'),
             ]);
 
-            setRevenueTrendData(trendRes.data);
-            setFunnelData(funnelRes.data);
-            setAgingData(agingRes.data);
+            setRevenueTrendData(trendRes.data?.data?.data || []);
+            setFunnelData(funnelRes.data?.data?.stages || []);
+            setAgingData(agingRes.data?.data?.buckets || []);
         } catch (err: any) {
             setError(err.message || 'Failed to load revenue charts');
         } finally {
@@ -81,10 +81,10 @@ export const RevenueCharts: React.FC<RevenueChartsProps> = ({ tenantId, orgId })
                     title="Revenue vs Target"
                     description="Monthly performance comparison"
                     chartId="revenue-trend-chart"
-                    exportData={revenueTrendData.data || []}
+                    exportData={revenueTrendData}
                 >
                     <LineChartComponent
-                        data={revenueTrendData.data || []}
+                        data={revenueTrendData}
                         xAxisKey="date"
                         series={[
                             { key: 'actual', name: 'Actual Revenue', color: '#3b82f6' },
@@ -104,10 +104,10 @@ export const RevenueCharts: React.FC<RevenueChartsProps> = ({ tenantId, orgId })
                     title="Deal Conversion Funnel"
                     description="Sales pipeline progression"
                     chartId="conversion-funnel-chart"
-                    exportData={funnelData.stages || []}
+                    exportData={funnelData}
                 >
                     <FunnelChartComponent
-                        data={funnelData.stages || []}
+                        data={funnelData}
                         height={320}
                         segmentColor="revenue"
                         formatValue={(value) => formatCurrency(value)}
@@ -121,11 +121,11 @@ export const RevenueCharts: React.FC<RevenueChartsProps> = ({ tenantId, orgId })
                     title="Invoice Aging Distribution"
                     description="Outstanding invoices by age bucket"
                     chartId="aging-buckets-chart"
-                    exportData={agingData.buckets || []}
+                    exportData={agingData}
                     className="lg:col-span-2"
                 >
                     <BarChartComponent
-                        data={agingData.buckets || []}
+                        data={agingData}
                         xAxisKey="name"
                         series={[{ key: 'value', name: 'Amount', color: '#3b82f6' }]}
                         height={280}

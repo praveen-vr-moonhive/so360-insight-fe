@@ -40,9 +40,9 @@ export const FinanceCharts: React.FC<FinanceChartsProps> = ({ tenantId, orgId })
                 insightApi.getChartData('finance', 'expense_variance'),
             ]);
 
-            setCashFlowData(cashFlowRes.data);
-            setBurnRateData(burnRateRes.data);
-            setExpenseData(expenseRes.data);
+            setCashFlowData(cashFlowRes.data?.data?.data || []);
+            setBurnRateData(burnRateRes.data?.data?.data || []);
+            setExpenseData(expenseRes.data?.data?.data || []);
         } catch (err: any) {
             setError(err.message || 'Failed to load finance charts');
         } finally {
@@ -80,7 +80,7 @@ export const FinanceCharts: React.FC<FinanceChartsProps> = ({ tenantId, orgId })
                         <p className="text-sm text-slate-400 mt-1">Receivables, payables, and net position</p>
                     </div>
                     <WaterfallChartComponent
-                        data={cashFlowData.flows || []}
+                        data={cashFlowData}
                         height={320}
                         formatValue={(value) => formatCurrency(value)}
                     />
@@ -95,7 +95,7 @@ export const FinanceCharts: React.FC<FinanceChartsProps> = ({ tenantId, orgId })
                         <p className="text-sm text-slate-400 mt-1">Historical and forecasted burn</p>
                     </div>
                     <LineChartComponent
-                        data={burnRateData.data || []}
+                        data={burnRateData}
                         xAxisKey="month"
                         series={[
                             { key: 'actual', name: 'Actual Burn', color: '#ef4444' },
@@ -116,10 +116,10 @@ export const FinanceCharts: React.FC<FinanceChartsProps> = ({ tenantId, orgId })
                         <p className="text-sm text-slate-400 mt-1">Budget vs actual by category</p>
                     </div>
                     <BarChartComponent
-                        data={expenseData.categories || []}
+                        data={expenseData}
                         xAxisKey="category"
                         series={[
-                            { key: 'budget', name: 'Budget', color: '#94a3b8' },
+                            { key: 'budgeted', name: 'Budget', color: '#94a3b8' },
                             { key: 'actual', name: 'Actual', color: '#ef4444' },
                         ]}
                         height={280}

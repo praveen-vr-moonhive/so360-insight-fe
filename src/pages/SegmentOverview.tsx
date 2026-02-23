@@ -16,7 +16,7 @@ export const SegmentOverview: React.FC = () => {
     const { businessSettings } = useShell();
     const formatters = useFormatters({
         currency: businessSettings?.base_currency || 'USD',
-        locale: businessSettings?.number_format || 'en-US',
+        locale: businessSettings?.document_language || 'en-US',
         timezone: businessSettings?.timezone || 'UTC',
     });
 
@@ -78,7 +78,7 @@ export const SegmentOverview: React.FC = () => {
     if (loading) {
         return (
             <div className="min-h-screen bg-slate-950 p-8">
-                <div className="max-w-7xl mx-auto">
+                <div>
                     <div className="animate-pulse">
                         <div className="h-10 bg-slate-800 rounded w-64 mb-8"></div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -95,7 +95,7 @@ export const SegmentOverview: React.FC = () => {
     if (error) {
         return (
             <div className="min-h-screen bg-slate-950 p-8">
-                <div className="max-w-7xl mx-auto">
+                <div>
                     <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-6 flex items-start gap-4">
                         <AlertCircle className="w-6 h-6 text-red-400 flex-shrink-0 mt-0.5" />
                         <div>
@@ -116,7 +116,7 @@ export const SegmentOverview: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-slate-950 p-8">
-            <div className="max-w-7xl mx-auto">
+            <div>
                 {/* Header */}
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-slate-100 mb-2">Business Intelligence</h1>

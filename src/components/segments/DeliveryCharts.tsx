@@ -42,9 +42,9 @@ export const DeliveryCharts: React.FC<DeliveryChartsProps> = ({ tenantId, orgId 
                 insightApi.getChartData('delivery', 'backorder_analysis'),
             ]);
 
-            setDeliveryRateData(rateRes.data);
-            setTurnoverData(turnoverRes.data);
-            setBackorderData(backorderRes.data);
+            setDeliveryRateData(rateRes.data?.data?.data || []);
+            setTurnoverData(turnoverRes.data?.data?.data || []);
+            setBackorderData(backorderRes.data?.data?.data || []);
         } catch (err: any) {
             setError(err.message || 'Failed to load delivery charts');
         } finally {
@@ -82,9 +82,9 @@ export const DeliveryCharts: React.FC<DeliveryChartsProps> = ({ tenantId, orgId 
                         <p className="text-sm text-slate-400 mt-1">Trend with 80% target band</p>
                     </div>
                     <AreaChartComponent
-                        data={deliveryRateData.data || []}
-                        xAxisKey="date"
-                        yAxisKey="rate"
+                        data={deliveryRateData}
+                        xAxisKey="month"
+                        yAxisKey="on_time"
                         height={280}
                         segmentColor="delivery"
                         formatValue={(value) => formatPercentage(value)}
@@ -102,15 +102,9 @@ export const DeliveryCharts: React.FC<DeliveryChartsProps> = ({ tenantId, orgId 
                         <p className="text-sm text-slate-400 mt-1">Top categories comparison</p>
                     </div>
                     <LineChartComponent
-                        data={turnoverData.data || []}
-                        xAxisKey="month"
-                        series={
-                            turnoverData.categories?.map((cat: string, idx: number) => ({
-                                key: cat,
-                                name: cat,
-                                color: ['#10b981', '#34d399', '#6ee7b7', '#a7f3d0', '#d1fae5'][idx % 5],
-                            })) || []
-                        }
+                        data={turnoverData}
+                        xAxisKey="category"
+                        series={[{ key: 'turnover', name: 'Inventory Turnover', color: '#10b981' }]}
                         height={280}
                         segmentColor="delivery"
                         formatValue={(value) => formatNumber(value, 1)}
@@ -126,9 +120,9 @@ export const DeliveryCharts: React.FC<DeliveryChartsProps> = ({ tenantId, orgId 
                         <p className="text-sm text-slate-400 mt-1">Items on backorder</p>
                     </div>
                     <BarChartComponent
-                        data={backorderData.categories || []}
-                        xAxisKey="category"
-                        series={[{ key: 'count', name: 'Backorders', color: '#ef4444' }]}
+                        data={backorderData}
+                        xAxisKey="week"
+                        series={[{ key: 'backorders', name: 'Backorders', color: '#ef4444' }]}
                         height={280}
                         segmentColor="delivery"
                         formatValue={(value) => formatNumber(value)}

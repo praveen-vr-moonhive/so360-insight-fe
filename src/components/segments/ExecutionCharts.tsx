@@ -42,9 +42,9 @@ export const ExecutionCharts: React.FC<ExecutionChartsProps> = ({ tenantId, orgI
                 insightApi.getChartData('execution', 'workflow_status'),
             ]);
 
-            setTaskCompletionData(taskRes.data);
-            setCycleTimeData(cycleRes.data);
-            setWorkflowStatusData(workflowRes.data);
+            setTaskCompletionData(taskRes.data?.data?.data || []);
+            setCycleTimeData(cycleRes.data?.data?.data || []);
+            setWorkflowStatusData(workflowRes.data?.data?.statuses || []);
         } catch (err: any) {
             setError(err.message || 'Failed to load execution charts');
         } finally {
@@ -82,11 +82,11 @@ export const ExecutionCharts: React.FC<ExecutionChartsProps> = ({ tenantId, orgI
                         <p className="text-sm text-slate-400 mt-1">On-time vs delayed tasks by month</p>
                     </div>
                     <BarChartComponent
-                        data={taskCompletionData.data || []}
-                        xAxisKey="month"
+                        data={taskCompletionData}
+                        xAxisKey="week"
                         series={[
-                            { key: 'onTime', name: 'On Time', color: '#10b981', stackId: 'stack' },
-                            { key: 'delayed', name: 'Delayed', color: '#ef4444', stackId: 'stack' },
+                            { key: 'completed', name: 'Completed', color: '#10b981', stackId: 'stack' },
+                            { key: 'planned', name: 'Planned', color: '#ef4444', stackId: 'stack' },
                         ]}
                         height={280}
                         segmentColor="execution"
@@ -103,10 +103,10 @@ export const ExecutionCharts: React.FC<ExecutionChartsProps> = ({ tenantId, orgI
                         <p className="text-sm text-slate-400 mt-1">Average days with 5-day target</p>
                     </div>
                     <LineChartComponent
-                        data={cycleTimeData.data || []}
-                        xAxisKey="date"
+                        data={cycleTimeData}
+                        xAxisKey="month"
                         series={[
-                            { key: 'averageDays', name: 'Avg Days', color: '#a855f7' },
+                            { key: 'avg_days', name: 'Avg Days', color: '#a855f7' },
                         ]}
                         height={280}
                         segmentColor="execution"
@@ -124,7 +124,7 @@ export const ExecutionCharts: React.FC<ExecutionChartsProps> = ({ tenantId, orgI
                         <p className="text-sm text-slate-400 mt-1">Current workflow state breakdown</p>
                     </div>
                     <PieChartComponent
-                        data={workflowStatusData.distribution || []}
+                        data={workflowStatusData || []}
                         height={320}
                         segmentColor="execution"
                         formatValue={(value) => formatNumber(value)}

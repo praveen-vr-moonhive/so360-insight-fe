@@ -18,7 +18,7 @@ export const SegmentDetailPage: React.FC = () => {
     const { businessSettings } = useShell();
     const formatters = useFormatters({
         currency: businessSettings?.base_currency || 'USD',
-        locale: businessSettings?.number_format || 'en-US',
+        locale: businessSettings?.document_language || 'en-US',
         timezone: businessSettings?.timezone || 'UTC',
     });
 
@@ -95,7 +95,7 @@ export const SegmentDetailPage: React.FC = () => {
     if (error || !segment) {
         return (
             <div className="min-h-screen bg-slate-950 p-8">
-                <div className="max-w-7xl mx-auto">
+                <div>
                     <button
                         onClick={() => navigate('/')}
                         className="mb-6 flex items-center gap-2 text-slate-400 hover:text-slate-300 transition-colors"
@@ -124,7 +124,7 @@ export const SegmentDetailPage: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-slate-950 p-8">
-            <div className="max-w-7xl mx-auto">
+            <div>
                 {/* Header */}
                 <div className="mb-8">
                     <button

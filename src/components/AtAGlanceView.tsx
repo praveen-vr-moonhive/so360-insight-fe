@@ -14,13 +14,15 @@ interface AtAGlanceViewProps {
 
 interface NeuraSummary {
     type: string;
+    segmentCode: string;
     title: string;
     icon: string;
     color: 'blue' | 'green' | 'purple' | 'orange';
-    prompt: string;
     summary: string | null;
-    metrics?: Record<string, any>;
+    generatedAt: string | null;
+    cached: boolean;
     loading: boolean;
+    regenerating: boolean;
     error: string | null;
 }
 
@@ -31,42 +33,54 @@ export const AtAGlanceView: React.FC<AtAGlanceViewProps> = ({ segments, onSegmen
     const [neuraSummaries, setNeuraSummaries] = useState<NeuraSummary[]>([
         {
             type: 'financial',
+            segmentCode: 'finance',
             title: 'Financial Summary',
             icon: 'DollarSign',
             color: 'blue',
-            prompt: 'Generate a financial summary including total invoices, total amount invoiced, outstanding amounts, and recent payment trends for this organization',
             summary: null,
+            generatedAt: null,
+            cached: false,
             loading: true,
+            regenerating: false,
             error: null,
         },
         {
             type: 'sales',
+            segmentCode: 'revenue',
             title: 'Sales Overview',
             icon: 'TrendingUp',
             color: 'green',
-            prompt: 'Generate a sales overview including total deals, pipeline value, conversion rates, and top opportunities for this organization',
             summary: null,
+            generatedAt: null,
+            cached: false,
             loading: true,
+            regenerating: false,
             error: null,
         },
         {
             type: 'projects',
+            segmentCode: 'execution',
             title: 'Projects Status',
             icon: 'Briefcase',
             color: 'purple',
-            prompt: 'Generate a project status report including active projects, completion rates, resource allocation, and upcoming milestones for this organization',
             summary: null,
+            generatedAt: null,
+            cached: false,
             loading: true,
+            regenerating: false,
             error: null,
         },
         {
             type: 'inventory',
+            segmentCode: 'delivery',
             title: 'Inventory Status',
             icon: 'Package',
             color: 'orange',
-            prompt: 'Generate an inventory status report including total items, stock levels, pending orders, and items requiring attention for this organization',
             summary: null,
+            generatedAt: null,
+            cached: false,
             loading: true,
+            regenerating: false,
             error: null,
         },
     ]);
@@ -124,24 +138,19 @@ export const AtAGlanceView: React.FC<AtAGlanceViewProps> = ({ segments, onSegmen
         }
     };
 
-    const fetchNeuraSummaries = async () => {
+    const fetchNeuraSummaries = () => {
         // Fetch each summary independently for progressive loading
         neuraSummaries.forEach((summary, index) => {
-            fetchSingleNeuraSummary(summary.prompt, index);
+            fetchSingleNeuraSummary(summary.segmentCode, index);
         });
     };
 
-    const fetchSingleNeuraSummary = async (prompt: string, index: number) => {
+    const fetchSingleNeuraSummary = async (segmentCode: string, index: number) => {
         try {
-            const response = await fetch('/neura-api/agents/execute', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    prompt,
-                    mode: 'assist',
-                }),
+            // Fetch from Insight BE — returns cached summary or generates a fresh one
+            const response = await fetch(`/v1/insight/ai-summary/${segmentCode}`, {
+                method: 'GET',
+                headers: insightApi.getAuthHeaders(),
             });
 
             if (!response.ok) {
@@ -150,35 +159,27 @@ export const AtAGlanceView: React.FC<AtAGlanceViewProps> = ({ segments, onSegmen
 
             const data = await response.json();
 
-            // Extract summary text from message
-            let summaryText = data.message || '';
-            // Remove markdown headers and clean up
-            summaryText = summaryText
-                .replace(/^#+\s+.*$/gm, '') // Remove markdown headers
-                .replace(/^[-*]\s+/gm, '') // Remove bullet points
-                .trim();
-
-            // Extract metrics from executionResult if available
-            const metrics = data.actionCard?.executionResult || {};
-
             setNeuraSummaries((prev) => {
                 const updated = [...prev];
                 updated[index] = {
                     ...updated[index],
-                    summary: summaryText,
-                    metrics,
+                    summary: data.summary || null,
+                    generatedAt: data.generated_at || null,
+                    cached: data.cached ?? false,
                     loading: false,
                     error: null,
                 };
                 return updated;
             });
         } catch (err) {
-            console.error(`Failed to fetch Neura summary (${index}):`, err);
+            console.error(`Failed to fetch AI summary (${segmentCode}):`, err);
             setNeuraSummaries((prev) => {
                 const updated = [...prev];
                 updated[index] = {
                     ...updated[index],
                     summary: null,
+                    generatedAt: null,
+                    cached: false,
                     loading: false,
                     error: err instanceof Error ? err.message : 'Failed to load AI insights',
                 };
@@ -193,7 +194,58 @@ export const AtAGlanceView: React.FC<AtAGlanceViewProps> = ({ segments, onSegmen
             updated[index] = { ...updated[index], loading: true, error: null };
             return updated;
         });
-        fetchSingleNeuraSummary(neuraSummaries[index].prompt, index);
+        fetchSingleNeuraSummary(neuraSummaries[index].segmentCode, index);
+    };
+
+    const regenerateNeuraSummary = async (index: number) => {
+        const segmentCode = neuraSummaries[index].segmentCode;
+
+        // Mark as regenerating (spinner on button, keep old summary visible)
+        setNeuraSummaries((prev) => {
+            const updated = [...prev];
+            updated[index] = { ...updated[index], regenerating: true, error: null };
+            return updated;
+        });
+
+        try {
+            const response = await fetch(
+                `/v1/insight/ai-summary/${segmentCode}/regenerate`,
+                {
+                    method: 'POST',
+                    headers: insightApi.getAuthHeaders(),
+                },
+            );
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            setNeuraSummaries((prev) => {
+                const updated = [...prev];
+                updated[index] = {
+                    ...updated[index],
+                    summary: data.summary || null,
+                    generatedAt: data.generated_at || null,
+                    cached: false,
+                    regenerating: false,
+                    error: null,
+                };
+                return updated;
+            });
+        } catch (err) {
+            console.error(`Failed to regenerate AI summary (${segmentCode}):`, err);
+            setNeuraSummaries((prev) => {
+                const updated = [...prev];
+                updated[index] = {
+                    ...updated[index],
+                    regenerating: false,
+                    error: err instanceof Error ? err.message : 'Regeneration failed',
+                };
+                return updated;
+            });
+        }
     };
 
     const getSegmentIcon = (iconName: string) => {
@@ -284,10 +336,13 @@ export const AtAGlanceView: React.FC<AtAGlanceViewProps> = ({ segments, onSegmen
                             icon={summary.icon}
                             color={summary.color}
                             summary={summary.summary}
-                            metrics={summary.metrics}
+                            generatedAt={summary.generatedAt}
+                            cached={summary.cached}
                             loading={summary.loading}
+                            regenerating={summary.regenerating}
                             error={summary.error}
                             onRetry={() => retryNeuraSummary(index)}
+                            onRegenerate={() => regenerateNeuraSummary(index)}
                         />
                     ))}
                 </div>

@@ -15,6 +15,9 @@ export const MfeShellInitializer: React.FC<MfeShellInitializerProps> = ({ childr
             // Sync tenant and org IDs with API client
             insightApi.setTenantId(shell.currentTenant.id);
             insightApi.setOrgId(shell.currentOrg.id);
+            if (shell.accessToken) {
+                insightApi.setAccessToken(shell.accessToken);
+            }
             setIsSynced(true);
             console.log('Insight MFE synced with Shell context', {
                 tenant: shell.currentTenant.id,
@@ -23,7 +26,7 @@ export const MfeShellInitializer: React.FC<MfeShellInitializerProps> = ({ childr
         } else {
             setIsSynced(false);
         }
-    }, [shell?.currentTenant?.id, shell?.currentOrg?.id]);
+    }, [shell?.currentTenant?.id, shell?.currentOrg?.id, shell?.accessToken]);
 
     if (!isSynced) {
         return (

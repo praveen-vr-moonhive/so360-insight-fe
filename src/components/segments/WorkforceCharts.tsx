@@ -42,9 +42,9 @@ export const WorkforceCharts: React.FC<WorkforceChartsProps> = ({ tenantId, orgI
                 insightApi.getChartData('workforce', 'overtime_distribution'),
             ]);
 
-            setUtilizationData(utilizationRes.data);
-            setComplianceData(complianceRes.data);
-            setOvertimeData(overtimeRes.data);
+            setUtilizationData(utilizationRes.data?.data?.data || []);
+            setComplianceData(complianceRes.data?.data || {});
+            setOvertimeData(overtimeRes.data?.data?.departments || []);
         } catch (err: any) {
             setError(err.message || 'Failed to load workforce charts');
         } finally {
@@ -82,9 +82,9 @@ export const WorkforceCharts: React.FC<WorkforceChartsProps> = ({ tenantId, orgI
                         <p className="text-sm text-slate-400 mt-1">Average team capacity usage</p>
                     </div>
                     <LineChartComponent
-                        data={utilizationData.data || []}
-                        xAxisKey="date"
-                        series={[{ key: 'rate', name: 'Utilization %', color: '#f97316' }]}
+                        data={utilizationData}
+                        xAxisKey="month"
+                        series={[{ key: 'utilization', name: 'Utilization %', color: '#f97316' }]}
                         height={280}
                         segmentColor="workforce"
                         formatValue={(value) => formatPercentage(value)}
@@ -101,7 +101,7 @@ export const WorkforceCharts: React.FC<WorkforceChartsProps> = ({ tenantId, orgI
                         <p className="text-sm text-slate-400 mt-1">Current compliance rate</p>
                     </div>
                     <GaugeChartComponent
-                        value={complianceData.value || 0}
+                        value={complianceData.overall_score || 0}
                         title="Compliance"
                         height={250}
                         segmentColor="workforce"
@@ -118,9 +118,9 @@ export const WorkforceCharts: React.FC<WorkforceChartsProps> = ({ tenantId, orgI
                         <p className="text-sm text-slate-400 mt-1">Employee count by weekly hours</p>
                     </div>
                     <BarChartComponent
-                        data={overtimeData.brackets || []}
-                        xAxisKey="bracket"
-                        series={[{ key: 'count', name: 'Employees', color: '#f97316' }]}
+                        data={overtimeData}
+                        xAxisKey="name"
+                        series={[{ key: 'overtime_hours', name: 'Employees', color: '#f97316' }]}
                         height={280}
                         segmentColor="workforce"
                         formatValue={(value) => formatNumber(value)}

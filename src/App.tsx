@@ -1,12 +1,14 @@
-import { Routes, Route, Navigate, useParams } from 'react-router-dom';
+import { Routes, Route, useParams } from 'react-router-dom';
 import { MfeShellInitializer } from './components/MfeShellInitializer';
 import { InsightDashboard } from './pages/InsightDashboard';
 import { SignalsPage } from './pages/SignalsPage';
 
-// Redirect component for old segment routes
-const SegmentRedirect: React.FC = () => {
+// Renders InsightDashboard with the correct tab active for path-based routes
+// e.g. /insight/revenue → InsightDashboard with initialTab="revenue"
+// Keeps URL as-is so shell sidenav active state matches correctly
+const SegmentRoute: React.FC = () => {
     const { segmentCode } = useParams<{ segmentCode: string }>();
-    return <Navigate to={`/?tab=${segmentCode}`} replace />;
+    return <InsightDashboard initialTab={segmentCode} />;
 };
 
 function App() {
@@ -16,8 +18,8 @@ function App() {
                 <Route path="/" element={<InsightDashboard />} />
                 <Route path="signals" element={<SignalsPage />} />
 
-                {/* Backwards compatibility redirects */}
-                <Route path=":segmentCode" element={<SegmentRedirect />} />
+                {/* Path-based segment routes — URL stays as /insight/revenue etc. */}
+                <Route path=":segmentCode" element={<SegmentRoute />} />
             </Routes>
         </MfeShellInitializer>
     );

@@ -13,7 +13,7 @@ export const SignalCard: React.FC<SignalCardProps> = ({ signal, onResolve }) => 
     const { businessSettings } = useShell();
     const formatters = useFormatters({
         currency: businessSettings?.base_currency || 'USD',
-        locale: businessSettings?.number_format || 'en-US',
+        locale: businessSettings?.document_language || 'en-US',
         timezone: businessSettings?.timezone || 'UTC',
     });
 

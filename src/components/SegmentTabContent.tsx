@@ -11,6 +11,7 @@ import { ExecutionCharts } from './segments/ExecutionCharts';
 import { DeliveryCharts } from './segments/DeliveryCharts';
 import { WorkforceCharts } from './segments/WorkforceCharts';
 import { FinanceCharts } from './segments/FinanceCharts';
+import { NeuraSummaryCard } from './NeuraSummaryCard';
 import { insightApi } from '../services/insightApi';
 import type { SegmentDetail } from '../types/insight';
 
@@ -24,9 +25,16 @@ export const SegmentTabContent: React.FC<SegmentTabContentProps> = ({ segmentCod
     const [error, setError] = useState<string | null>(null);
     const [timeRange, setTimeRange] = useState<TimeRange>('30d');
     const [loadingTrends, setLoadingTrends] = useState(false);
+    const [neuraLoading, setNeuraLoading] = useState(true);
+    const [neuraSummary, setNeuraSummary] = useState<string | null>(null);
+    const [neuraGeneratedAt, setNeuraGeneratedAt] = useState<string | null>(null);
+    const [neuraCached, setNeuraCached] = useState(false);
+    const [neuraRegenerating, setNeuraRegenerating] = useState(false);
+    const [neuraError, setNeuraError] = useState<string | null>(null);
 
     useEffect(() => {
         fetchSegmentDetail();
+        fetchNeuraInsight();
     }, [segmentCode]);
 
     useEffect(() => {
@@ -34,6 +42,46 @@ export const SegmentTabContent: React.FC<SegmentTabContentProps> = ({ segmentCod
             fetchTrendsForRange();
         }
     }, [timeRange, segment?.segment_code]);
+
+    const fetchNeuraInsight = async () => {
+        try {
+            setNeuraLoading(true);
+            setNeuraError(null);
+            const response = await fetch(`/v1/insight/ai-summary/${segmentCode}`, {
+                method: 'GET',
+                headers: insightApi.getAuthHeaders(),
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            setNeuraSummary(data.summary || null);
+            setNeuraGeneratedAt(data.generated_at || null);
+            setNeuraCached(data.cached ?? false);
+        } catch (err) {
+            setNeuraError(err instanceof Error ? err.message : 'Failed to load AI insights');
+        } finally {
+            setNeuraLoading(false);
+        }
+    };
+
+    const handleNeuraRegenerate = async () => {
+        try {
+            setNeuraRegenerating(true);
+            setNeuraError(null);
+            const response = await fetch(`/v1/insight/ai-summary/${segmentCode}/regenerate`, {
+                method: 'POST',
+                headers: insightApi.getAuthHeaders(),
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
+            setNeuraSummary(data.summary || null);
+            setNeuraGeneratedAt(data.generated_at || null);
+            setNeuraCached(false);
+        } catch (err) {
+            setNeuraError(err instanceof Error ? err.message : 'Regeneration failed');
+        } finally {
+            setNeuraRegenerating(false);
+        }
+    };
 
     const fetchSegmentDetail = async () => {
         try {
@@ -177,6 +225,32 @@ export const SegmentTabContent: React.FC<SegmentTabContentProps> = ({ segmentCod
                 </div>
                 <DataFreshnessIndicator />
             </div>
+
+            {/* Section 1.5: Neura AI Insights */}
+            {(() => {
+                const segmentColors: Record<string, 'blue' | 'green' | 'purple' | 'orange'> = {
+                    revenue: 'green',
+                    execution: 'purple',
+                    delivery: 'orange',
+                    workforce: 'blue',
+                    finance: 'blue',
+                };
+                return (
+                    <NeuraSummaryCard
+                        title={`${segment.segment_name} AI Insights`}
+                        icon="Sparkles"
+                        color={segmentColors[segmentCode] ?? 'blue'}
+                        summary={neuraSummary}
+                        generatedAt={neuraGeneratedAt}
+                        cached={neuraCached}
+                        loading={neuraLoading}
+                        regenerating={neuraRegenerating}
+                        error={neuraError}
+                        onRetry={fetchNeuraInsight}
+                        onRegenerate={handleNeuraRegenerate}
+                    />
+                );
+            })()}
 
             {/* Section 2: KPIs Grid */}
             {segment.kpis.length > 0 && (
