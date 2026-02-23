@@ -19,6 +19,13 @@ export interface KPI {
     }>;
 }
 
+export interface RecommendedAction {
+    label: string;
+    path: string;
+    type: 'navigate' | 'trigger';
+    description?: string;
+}
+
 export interface Signal {
     id: string;
     tenant_id: string;
@@ -34,6 +41,7 @@ export interface Signal {
     resolved_at?: string;
     resolved_by?: string;
     resolution_note?: string;
+    recommended_actions?: RecommendedAction[];
 }
 
 export interface SignalsSummary {

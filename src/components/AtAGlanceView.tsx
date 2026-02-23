@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { TrendingUp, TrendingDown, Minus, AlertCircle } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import { KPICard } from './KPICard';
@@ -6,6 +6,17 @@ import { SignalCard } from './SignalCard';
 import { NeuraSummaryCard } from './NeuraSummaryCard';
 import { insightApi } from '../services/insightApi';
 import type { SegmentSummary, KPI, Signal } from '../types/insight';
+import { useModules } from '@so360/shell-context';
+
+// All possible AI summary cards with their required modules
+// Card appears only if at least one required module is enabled
+const ALL_SUMMARY_CARD_CONFIGS = [
+    { code: 'finance',   title: 'Financial Summary', icon: 'DollarSign', color: 'blue'   as const, requiredModules: ['accounting'] },
+    { code: 'revenue',   title: 'Sales Overview',    icon: 'TrendingUp', color: 'green'  as const, requiredModules: ['crm', 'accounting', 'dailystore'] },
+    { code: 'execution', title: 'Projects Status',   icon: 'Briefcase',  color: 'purple' as const, requiredModules: ['projects', 'flow'] },
+    { code: 'delivery',  title: 'Inventory Status',  icon: 'Package',    color: 'orange' as const, requiredModules: ['inventory', 'procurement', 'dailystore'] },
+    { code: 'workforce', title: 'Workforce Summary',  icon: 'Users2',     color: 'blue'   as const, requiredModules: ['people', 'timesheet'] },
+];
 
 interface AtAGlanceViewProps {
     segments: SegmentSummary[];
@@ -27,63 +38,53 @@ interface NeuraSummary {
 }
 
 export const AtAGlanceView: React.FC<AtAGlanceViewProps> = ({ segments, onSegmentClick }) => {
+    const { isModuleEnabled } = useModules();
     const [topKPIs, setTopKPIs] = useState<KPI[]>([]);
     const [criticalSignals, setCriticalSignals] = useState<Signal[]>([]);
     const [loading, setLoading] = useState(true);
-    const [neuraSummaries, setNeuraSummaries] = useState<NeuraSummary[]>([
-        {
-            type: 'financial',
-            segmentCode: 'finance',
-            title: 'Financial Summary',
-            icon: 'DollarSign',
-            color: 'blue',
+
+    // Determine which summary cards to show based on enabled modules
+    const visibleCardConfigs = useMemo(
+        () => ALL_SUMMARY_CARD_CONFIGS.filter(card =>
+            card.requiredModules.some(mod => isModuleEnabled(mod))
+        ),
+        [isModuleEnabled]
+    );
+
+    const [neuraSummaries, setNeuraSummaries] = useState<NeuraSummary[]>(() =>
+        visibleCardConfigs.map(cfg => ({
+            type: cfg.code,
+            segmentCode: cfg.code,
+            title: cfg.title,
+            icon: cfg.icon,
+            color: cfg.color,
             summary: null,
             generatedAt: null,
             cached: false,
             loading: true,
             regenerating: false,
             error: null,
-        },
-        {
-            type: 'sales',
-            segmentCode: 'revenue',
-            title: 'Sales Overview',
-            icon: 'TrendingUp',
-            color: 'green',
-            summary: null,
-            generatedAt: null,
-            cached: false,
-            loading: true,
-            regenerating: false,
-            error: null,
-        },
-        {
-            type: 'projects',
-            segmentCode: 'execution',
-            title: 'Projects Status',
-            icon: 'Briefcase',
-            color: 'purple',
-            summary: null,
-            generatedAt: null,
-            cached: false,
-            loading: true,
-            regenerating: false,
-            error: null,
-        },
-        {
-            type: 'inventory',
-            segmentCode: 'delivery',
-            title: 'Inventory Status',
-            icon: 'Package',
-            color: 'orange',
-            summary: null,
-            generatedAt: null,
-            cached: false,
-            loading: true,
-            regenerating: false,
-            error: null,
-        },
-    ]);
+        }))
+    );
+
+    // Re-initialize summaries when visible cards change (module toggled)
+    useEffect(() => {
+        setNeuraSummaries(
+            visibleCardConfigs.map(cfg => ({
+                type: cfg.code,
+                segmentCode: cfg.code,
+                title: cfg.title,
+                icon: cfg.icon,
+                color: cfg.color,
+                summary: null,
+                generatedAt: null,
+                cached: false,
+                loading: true,
+                regenerating: false,
+                error: null,
+            }))
+        );
+    }, [visibleCardConfigs.map(c => c.code).join(',')]);
 
     useEffect(() => {
         fetchAtAGlanceData();
@@ -139,9 +140,9 @@ export const AtAGlanceView: React.FC<AtAGlanceViewProps> = ({ segments, onSegmen
     };
 
     const fetchNeuraSummaries = () => {
-        // Fetch each summary independently for progressive loading
-        neuraSummaries.forEach((summary, index) => {
-            fetchSingleNeuraSummary(summary.segmentCode, index);
+        // Fetch each visible summary independently for progressive loading
+        visibleCardConfigs.forEach((cfg, index) => {
+            fetchSingleNeuraSummary(cfg.code, index);
         });
     };
 
@@ -302,7 +303,7 @@ export const AtAGlanceView: React.FC<AtAGlanceViewProps> = ({ segments, onSegmen
                 <div className="animate-pulse">
                     {/* AI Summary skeletons */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                        {[1, 2, 3, 4].map((i) => (
+                        {Array.from({ length: visibleCardConfigs.length || 4 }, (_, i) => (
                             <div key={i} className="h-48 bg-slate-900 rounded-lg"></div>
                         ))}
                     </div>

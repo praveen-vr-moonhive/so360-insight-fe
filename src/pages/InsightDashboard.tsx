@@ -8,6 +8,17 @@ import { SegmentTabContent } from '../components/SegmentTabContent';
 import { DataFreshnessIndicator } from '../components/DataFreshnessIndicator';
 import { insightApi } from '../services/insightApi';
 import type { SegmentSummary } from '../types/insight';
+import { useModules } from '@so360/shell-context';
+
+// Segment tabs that require at least one of their modules to be enabled
+// Use module IDs (not featureCodes) — same values as enabledModules array
+const SEGMENT_MODULE_DEPS: Record<string, string[]> = {
+    revenue:   ['crm', 'accounting', 'dailystore'],
+    execution: ['projects', 'flow', 'procurement'],
+    delivery:  ['inventory', 'procurement', 'dailystore'],
+    workforce: ['people', 'timesheet'],
+    finance:   ['accounting'],
+};
 
 interface InsightDashboardProps {
     initialTab?: string;
@@ -23,6 +34,7 @@ export const InsightDashboard: React.FC<InsightDashboardProps> = ({ initialTab }
     const [cooldownSeconds, setCooldownSeconds] = useState(0);
     const [refreshError, setRefreshError] = useState<string | null>(null);
     const freshnessKey = useRef(0);
+    const { isModuleEnabled } = useModules();
 
     // Sync active tab when navigating between segment routes (e.g. /insight/revenue → /insight/execution)
     useEffect(() => {
@@ -96,15 +108,30 @@ export const InsightDashboard: React.FC<InsightDashboardProps> = ({ initialTab }
         setSearchParams({ tab: segmentCode });
     };
 
-    // Build tabs array
+    // All segment tabs with their required modules
+    const allSegmentTabs: Tab[] = [
+        { id: 'revenue',   label: 'Revenue',   icon: 'TrendingUp' },
+        { id: 'execution', label: 'Execution', icon: 'Zap' },
+        { id: 'delivery',  label: 'Delivery',  icon: 'Truck' },
+        { id: 'workforce', label: 'Workforce', icon: 'Users' },
+        { id: 'finance',   label: 'Finance',   icon: 'DollarSign' },
+    ];
+
+    // Filter segment tabs: show only if at least one required module is enabled
+    const visibleSegmentTabs = allSegmentTabs.filter(tab => {
+        const deps = SEGMENT_MODULE_DEPS[tab.id];
+        if (!deps) return true;
+        return deps.some(mod => isModuleEnabled(mod));
+    });
+
+    // Build final tabs: "At a Glance" always first, then visible segment tabs
     const tabs: Tab[] = [
         { id: 'at-a-glance', label: 'At a Glance', icon: 'LayoutDashboard' },
-        { id: 'revenue', label: 'Revenue', icon: 'TrendingUp' },
-        { id: 'execution', label: 'Execution', icon: 'Zap' },
-        { id: 'delivery', label: 'Delivery', icon: 'Truck' },
-        { id: 'workforce', label: 'Workforce', icon: 'Users' },
-        { id: 'finance', label: 'Finance', icon: 'DollarSign' },
+        ...visibleSegmentTabs,
     ];
+
+    // If active tab is no longer visible (module was disabled), fall back to at-a-glance
+    const effectiveActiveTab = tabs.some(t => t.id === activeTab) ? activeTab : 'at-a-glance';
 
     if (loading) {
         return (
@@ -182,22 +209,22 @@ export const InsightDashboard: React.FC<InsightDashboardProps> = ({ initialTab }
                 </header>
 
                 {/* Tab Navigation */}
-                <TabNavigation tabs={tabs} activeTab={activeTab} onChange={handleTabChange} />
+                <TabNavigation tabs={tabs} activeTab={effectiveActiveTab} onChange={handleTabChange} />
 
                 {/* Tab Content */}
                 <div className="mt-6">
                     <AnimatePresence mode="wait">
                         <motion.div
-                            key={activeTab}
+                            key={effectiveActiveTab}
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: -10 }}
                             transition={{ duration: 0.2 }}
                         >
-                            {activeTab === 'at-a-glance' ? (
+                            {effectiveActiveTab === 'at-a-glance' ? (
                                 <AtAGlanceView segments={segments} onSegmentClick={handleSegmentClick} />
                             ) : (
-                                <SegmentTabContent segmentCode={activeTab} />
+                                <SegmentTabContent segmentCode={effectiveActiveTab} />
                             )}
                         </motion.div>
                     </AnimatePresence>

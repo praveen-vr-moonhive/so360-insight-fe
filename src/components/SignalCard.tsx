@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertCircle, AlertTriangle, Info, CheckCircle } from 'lucide-react';
+import { AlertCircle, AlertTriangle, Info, CheckCircle, ArrowRight } from 'lucide-react';
 import type { Signal } from '../types/insight';
 import { useFormatters } from '@so360/formatters';
 import { useShell } from '@so360/shell-context';
@@ -50,6 +50,12 @@ export const SignalCard: React.FC<SignalCardProps> = ({ signal, onResolve }) => 
         }
     };
 
+    const hasActions = signal.recommended_actions && signal.recommended_actions.length > 0;
+
+    const handleNavigate = (path: string) => {
+        window.location.href = path;
+    };
+
     return (
         <div className={`border rounded-lg p-4 ${getSeverityColor()}`}>
             <div className="flex items-start justify-between mb-2">
@@ -64,6 +70,23 @@ export const SignalCard: React.FC<SignalCardProps> = ({ signal, onResolve }) => 
                     {signal.severity.toUpperCase()}
                 </span>
             </div>
+
+            {/* Recommended Actions */}
+            {hasActions && !signal.resolved_at && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                    {signal.recommended_actions!.map((action, idx) => (
+                        <button
+                            key={idx}
+                            onClick={() => handleNavigate(action.path)}
+                            title={action.description}
+                            className="flex items-center gap-1.5 px-2.5 py-1 border border-slate-600 hover:border-slate-400 text-slate-300 hover:text-slate-100 text-xs rounded transition-colors bg-slate-800/50 hover:bg-slate-700/50"
+                        >
+                            {action.label}
+                            <ArrowRight className="w-3 h-3" />
+                        </button>
+                    ))}
+                </div>
+            )}
 
             <div className="flex items-center justify-between mt-4">
                 <div className="text-xs text-slate-500">
