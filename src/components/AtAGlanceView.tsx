@@ -8,15 +8,16 @@ import { ModuleCoveragePanel } from './ModuleCoveragePanel';
 import { insightApi } from '../services/insightApi';
 import type { SegmentSummary, KPI, Signal } from '../types/insight';
 import { useModules } from '@so360/shell-context';
+import { SEGMENT_MODULE_DEPS } from '../constants/moduleMapping';
 
 // All possible AI summary cards with their required modules
 // Card appears only if at least one required module is enabled
 const ALL_SUMMARY_CARD_CONFIGS = [
-    { code: 'finance',   title: 'Financial Summary', icon: 'DollarSign', color: 'blue'   as const, requiredModules: ['accounting'] },
-    { code: 'revenue',   title: 'Sales Overview',    icon: 'TrendingUp', color: 'green'  as const, requiredModules: ['crm', 'accounting', 'dailystore'] },
-    { code: 'execution', title: 'Projects Status',   icon: 'Briefcase',  color: 'purple' as const, requiredModules: ['projects', 'flow'] },
-    { code: 'delivery',  title: 'Inventory Status',  icon: 'Package',    color: 'orange' as const, requiredModules: ['inventory', 'procurement', 'dailystore'] },
-    { code: 'workforce', title: 'Workforce Summary',  icon: 'Users2',     color: 'blue'   as const, requiredModules: ['people', 'timesheet'] },
+    { code: 'finance',   title: 'Financial Overview',  icon: 'DollarSign', color: 'blue'   as const, requiredModules: ['accounting'] },
+    { code: 'revenue',   title: 'Revenue Overview',    icon: 'TrendingUp', color: 'green'  as const, requiredModules: ['crm', 'accounting', 'dailystore', 'inbox'] },
+    { code: 'execution', title: 'Execution Overview',  icon: 'Briefcase',  color: 'purple' as const, requiredModules: ['projects', 'flow', 'procurement', 'dailystore'] },
+    { code: 'delivery',  title: 'Delivery Overview',   icon: 'Package',    color: 'orange' as const, requiredModules: ['inventory', 'procurement', 'dailystore'] },
+    { code: 'workforce', title: 'Workforce Overview',  icon: 'Users2',     color: 'blue'   as const, requiredModules: ['people', 'timesheet'] },
 ];
 
 interface AtAGlanceViewProps {
@@ -40,6 +41,7 @@ interface NeuraSummary {
 
 export const AtAGlanceView: React.FC<AtAGlanceViewProps> = ({ segments, onSegmentClick }) => {
     const { isModuleEnabled } = useModules();
+    const stripPrefix = (code: string) => code.replace('module:', '');
     const [topKPIs, setTopKPIs] = useState<KPI[]>([]);
     const [criticalSignals, setCriticalSignals] = useState<Signal[]>([]);
     const [loading, setLoading] = useState(true);
@@ -102,15 +104,26 @@ export const AtAGlanceView: React.FC<AtAGlanceViewProps> = ({ segments, onSegmen
                 unresolved_only: true,
                 limit: 10,
             });
-            setCriticalSignals(signalsResponse.data);
-
-            // Fetch full details for all segments to get all KPIs
-            const segmentDetails = await Promise.all(
-                segments.map((s) => insightApi.getSegmentDetail(s.segment_code))
+            setCriticalSignals(
+                signalsResponse.data.filter((s: any) => isModuleEnabled(stripPrefix(s.module_code || '')))
             );
 
-            // Collect ALL KPIs from all segments
-            const allKPIs = segmentDetails.flatMap((segment) => segment.kpis);
+            // Only fetch segments whose required modules are enabled
+            const enabledSegments = segments.filter(s => {
+                const deps = SEGMENT_MODULE_DEPS[s.segment_code];
+                if (!deps) return true;
+                return deps.some(mod => isModuleEnabled(mod));
+            });
+
+            // Fetch full details for enabled segments to get KPIs
+            const segmentDetails = await Promise.all(
+                enabledSegments.map((s) => insightApi.getSegmentDetail(s.segment_code))
+            );
+
+            // Collect KPIs from enabled segments, filtered by enabled module
+            const allKPIs = segmentDetails
+                .flatMap((segment) => segment.kpis)
+                .filter((kpi: any) => isModuleEnabled(stripPrefix(kpi.module_code || '')));
 
             // Filter to important KPIs (critical trends or high priority)
             const importantKPIs = allKPIs
@@ -354,7 +367,11 @@ export const AtAGlanceView: React.FC<AtAGlanceViewProps> = ({ segments, onSegmen
             <div>
                 <h2 className="text-xl font-semibold text-slate-100 mb-4">Business Segments</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                    {segments.map((segment) => (
+                    {segments.filter(s => {
+                        const deps = SEGMENT_MODULE_DEPS[s.segment_code];
+                        if (!deps) return true;
+                        return deps.some(mod => isModuleEnabled(mod));
+                    }).map((segment) => (
                         <button
                             key={segment.segment_code}
                             onClick={() => onSegmentClick(segment.segment_code)}

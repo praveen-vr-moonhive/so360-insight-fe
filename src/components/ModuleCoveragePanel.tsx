@@ -12,6 +12,7 @@ const MODULE_REGISTRY = [
     { id: 'people',      name: 'People',       icon: 'UserCheck',     color: 'pink',   kpis: 3, signals: 1 },
     { id: 'timesheet',   name: 'Timesheet',    icon: 'Clock',         color: 'yellow', kpis: 2, signals: 2 },
     { id: 'dailystore',  name: 'Daily Store',  icon: 'Store',         color: 'teal',   kpis: 5, signals: 0 },
+    { id: 'inbox',       name: 'Inbox',        icon: 'Inbox',         color: 'cyan',   kpis: 4, signals: 2 },
 ];
 
 export const ModuleCoveragePanel: React.FC = () => {

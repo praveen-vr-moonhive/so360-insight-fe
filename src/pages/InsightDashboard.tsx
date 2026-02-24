@@ -9,16 +9,7 @@ import { DataFreshnessIndicator } from '../components/DataFreshnessIndicator';
 import { insightApi } from '../services/insightApi';
 import type { SegmentSummary } from '../types/insight';
 import { useModules } from '@so360/shell-context';
-
-// Segment tabs that require at least one of their modules to be enabled
-// Use module IDs (not featureCodes) — same values as enabledModules array
-const SEGMENT_MODULE_DEPS: Record<string, string[]> = {
-    revenue:   ['crm', 'accounting', 'dailystore'],
-    execution: ['projects', 'flow', 'procurement'],
-    delivery:  ['inventory', 'procurement', 'dailystore'],
-    workforce: ['people', 'timesheet'],
-    finance:   ['accounting'],
-};
+import { SEGMENT_MODULE_DEPS } from '../constants/moduleMapping';
 
 interface InsightDashboardProps {
     initialTab?: string;
