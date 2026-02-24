@@ -14,6 +14,7 @@ import {
     formatDate,
 } from '../charts';
 import { insightApi } from '../../services/insightApi';
+import { useModules } from '@so360/shell-context';
 
 interface WorkforceChartsProps {
     tenantId: string;
@@ -21,6 +22,7 @@ interface WorkforceChartsProps {
 }
 
 export const WorkforceCharts: React.FC<WorkforceChartsProps> = ({ tenantId, orgId }) => {
+    const { isModuleEnabled } = useModules();
     const [utilizationData, setUtilizationData] = useState<any>(null);
     const [complianceData, setComplianceData] = useState<any>(null);
     const [overtimeData, setOvertimeData] = useState<any>(null);
@@ -75,7 +77,7 @@ export const WorkforceCharts: React.FC<WorkforceChartsProps> = ({ tenantId, orgI
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Utilization Rate Trend */}
-            {utilizationData && (
+            {isModuleEnabled('people') && utilizationData && (
                 <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-6">
                     <div className="mb-4">
                         <h3 className="text-lg font-semibold text-slate-100">Team Utilization Rate</h3>
@@ -94,7 +96,7 @@ export const WorkforceCharts: React.FC<WorkforceChartsProps> = ({ tenantId, orgI
             )}
 
             {/* Timesheet Compliance Gauge */}
-            {complianceData && (
+            {isModuleEnabled('timesheet') && complianceData && (
                 <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-6">
                     <div className="mb-4">
                         <h3 className="text-lg font-semibold text-slate-100">Timesheet Compliance</h3>
@@ -111,7 +113,7 @@ export const WorkforceCharts: React.FC<WorkforceChartsProps> = ({ tenantId, orgI
             )}
 
             {/* Overtime Distribution */}
-            {overtimeData && (
+            {isModuleEnabled('timesheet') && overtimeData && (
                 <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-6 lg:col-span-2">
                     <div className="mb-4">
                         <h3 className="text-lg font-semibold text-slate-100">Overtime Distribution</h3>

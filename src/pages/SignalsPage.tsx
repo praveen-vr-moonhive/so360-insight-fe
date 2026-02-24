@@ -3,8 +3,22 @@ import { AlertCircle, Filter } from 'lucide-react';
 import { insightApi } from '../services/insightApi';
 import { SignalCard } from '../components/SignalCard';
 import type { Signal } from '../types/insight';
+import { useModules } from '@so360/shell-context';
+
+const MODULE_CODE_TO_ID: Record<string, string> = {
+    'module:crm': 'crm',
+    'module:accounting': 'accounting',
+    'module:projects': 'projects',
+    'module:inventory': 'inventory',
+    'module:procurement': 'procurement',
+    'module:timesheet': 'timesheet',
+    'module:people': 'people',
+    'module:flow': 'flow',
+    'module:dailystore': 'dailystore',
+};
 
 export const SignalsPage: React.FC = () => {
+    const { isModuleEnabled } = useModules();
     const [signals, setSignals] = useState<Signal[]>([]);
     const [loading, setLoading] = useState(true);
     const [severityFilter, setSeverityFilter] = useState<string>('all');
@@ -38,6 +52,12 @@ export const SignalsPage: React.FC = () => {
             console.error('Failed to resolve signal:', err);
         }
     };
+
+    const visibleSignals = signals.filter(signal => {
+        if (!signal.module_code) return true;
+        const moduleId = MODULE_CODE_TO_ID[signal.module_code];
+        return !moduleId || isModuleEnabled(moduleId);
+    });
 
     return (
         <div className="min-h-screen bg-slate-950 p-6">
@@ -102,9 +122,9 @@ export const SignalsPage: React.FC = () => {
                 {/* Signals List */}
                 {loading ? (
                     <div className="text-center text-slate-400 py-12">Loading signals...</div>
-                ) : signals.length > 0 ? (
+                ) : visibleSignals.length > 0 ? (
                     <div className="space-y-4">
-                        {signals.map((signal) => (
+                        {visibleSignals.map((signal) => (
                             <SignalCard key={signal.id} signal={signal} onResolve={handleResolveSignal} />
                         ))}
                     </div>

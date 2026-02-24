@@ -14,6 +14,7 @@ import {
 } from '../charts';
 import { ChartContainer } from '../charts/ChartContainer';
 import { insightApi } from '../../services/insightApi';
+import { useModules } from '@so360/shell-context';
 
 interface RevenueChartsProps {
     tenantId: string;
@@ -21,6 +22,7 @@ interface RevenueChartsProps {
 }
 
 export const RevenueCharts: React.FC<RevenueChartsProps> = ({ tenantId, orgId }) => {
+    const { isModuleEnabled } = useModules();
     const [revenueTrendData, setRevenueTrendData] = useState<any>(null);
     const [funnelData, setFunnelData] = useState<any>(null);
     const [agingData, setAgingData] = useState<any>(null);
@@ -76,7 +78,7 @@ export const RevenueCharts: React.FC<RevenueChartsProps> = ({ tenantId, orgId })
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Revenue vs Target Trend */}
-            {revenueTrendData && (
+            {(isModuleEnabled('crm') || isModuleEnabled('accounting')) && revenueTrendData && (
                 <ChartContainer
                     title="Revenue vs Target"
                     description="Monthly performance comparison"
@@ -99,7 +101,7 @@ export const RevenueCharts: React.FC<RevenueChartsProps> = ({ tenantId, orgId })
             )}
 
             {/* Deal Conversion Funnel */}
-            {funnelData && (
+            {isModuleEnabled('crm') && funnelData && (
                 <ChartContainer
                     title="Deal Conversion Funnel"
                     description="Sales pipeline progression"
@@ -116,7 +118,7 @@ export const RevenueCharts: React.FC<RevenueChartsProps> = ({ tenantId, orgId })
             )}
 
             {/* Invoice Aging Distribution */}
-            {agingData && (
+            {isModuleEnabled('accounting') && agingData && (
                 <ChartContainer
                     title="Invoice Aging Distribution"
                     description="Outstanding invoices by age bucket"

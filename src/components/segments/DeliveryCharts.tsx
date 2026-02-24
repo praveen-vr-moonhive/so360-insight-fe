@@ -14,6 +14,7 @@ import {
     formatDate,
 } from '../charts';
 import { insightApi } from '../../services/insightApi';
+import { useModules } from '@so360/shell-context';
 
 interface DeliveryChartsProps {
     tenantId: string;
@@ -21,6 +22,7 @@ interface DeliveryChartsProps {
 }
 
 export const DeliveryCharts: React.FC<DeliveryChartsProps> = ({ tenantId, orgId }) => {
+    const { isModuleEnabled } = useModules();
     const [deliveryRateData, setDeliveryRateData] = useState<any>(null);
     const [turnoverData, setTurnoverData] = useState<any>(null);
     const [backorderData, setBackorderData] = useState<any>(null);
@@ -75,7 +77,7 @@ export const DeliveryCharts: React.FC<DeliveryChartsProps> = ({ tenantId, orgId 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* On-Time Delivery Rate */}
-            {deliveryRateData && (
+            {isModuleEnabled('procurement') && deliveryRateData && (
                 <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-6 lg:col-span-2">
                     <div className="mb-4">
                         <h3 className="text-lg font-semibold text-slate-100">On-Time Delivery Rate</h3>
@@ -95,7 +97,7 @@ export const DeliveryCharts: React.FC<DeliveryChartsProps> = ({ tenantId, orgId 
             )}
 
             {/* Inventory Turnover */}
-            {turnoverData && (
+            {isModuleEnabled('inventory') && turnoverData && (
                 <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-6">
                     <div className="mb-4">
                         <h3 className="text-lg font-semibold text-slate-100">Inventory Turnover</h3>
@@ -113,7 +115,7 @@ export const DeliveryCharts: React.FC<DeliveryChartsProps> = ({ tenantId, orgId 
             )}
 
             {/* Backorder Analysis */}
-            {backorderData && (
+            {(isModuleEnabled('procurement') || isModuleEnabled('inventory')) && backorderData && (
                 <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-6">
                     <div className="mb-4">
                         <h3 className="text-lg font-semibold text-slate-100">Backorders by Category</h3>

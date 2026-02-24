@@ -12,6 +12,7 @@ import {
     formatCurrency,
 } from '../charts';
 import { insightApi } from '../../services/insightApi';
+import { useModules } from '@so360/shell-context';
 
 interface FinanceChartsProps {
     tenantId: string;
@@ -19,6 +20,7 @@ interface FinanceChartsProps {
 }
 
 export const FinanceCharts: React.FC<FinanceChartsProps> = ({ tenantId, orgId }) => {
+    const { isModuleEnabled } = useModules();
     const [cashFlowData, setCashFlowData] = useState<any>(null);
     const [burnRateData, setBurnRateData] = useState<any>(null);
     const [expenseData, setExpenseData] = useState<any>(null);
@@ -73,7 +75,7 @@ export const FinanceCharts: React.FC<FinanceChartsProps> = ({ tenantId, orgId })
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Cash Flow Waterfall */}
-            {cashFlowData && (
+            {isModuleEnabled('accounting') && cashFlowData && (
                 <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-6 lg:col-span-2">
                     <div className="mb-4">
                         <h3 className="text-lg font-semibold text-slate-100">Cash Flow Waterfall</h3>
@@ -88,7 +90,7 @@ export const FinanceCharts: React.FC<FinanceChartsProps> = ({ tenantId, orgId })
             )}
 
             {/* Burn Rate with Projection */}
-            {burnRateData && (
+            {isModuleEnabled('accounting') && burnRateData && (
                 <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-6">
                     <div className="mb-4">
                         <h3 className="text-lg font-semibold text-slate-100">Burn Rate & Projection</h3>
@@ -109,7 +111,7 @@ export const FinanceCharts: React.FC<FinanceChartsProps> = ({ tenantId, orgId })
             )}
 
             {/* Expense Variance */}
-            {expenseData && (
+            {isModuleEnabled('accounting') && expenseData && (
                 <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-6">
                     <div className="mb-4">
                         <h3 className="text-lg font-semibold text-slate-100">Expense Variance</h3>

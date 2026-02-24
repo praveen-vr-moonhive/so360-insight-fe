@@ -13,6 +13,7 @@ import {
     formatDate,
 } from '../charts';
 import { insightApi } from '../../services/insightApi';
+import { useModules } from '@so360/shell-context';
 
 interface ExecutionChartsProps {
     tenantId: string;
@@ -20,6 +21,7 @@ interface ExecutionChartsProps {
 }
 
 export const ExecutionCharts: React.FC<ExecutionChartsProps> = ({ tenantId, orgId }) => {
+    const { isModuleEnabled } = useModules();
     const [taskCompletionData, setTaskCompletionData] = useState<any>(null);
     const [cycleTimeData, setCycleTimeData] = useState<any>(null);
     const [workflowStatusData, setWorkflowStatusData] = useState<any>(null);
@@ -75,7 +77,7 @@ export const ExecutionCharts: React.FC<ExecutionChartsProps> = ({ tenantId, orgI
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Task Completion (Stacked Bar) */}
-            {taskCompletionData && (
+            {isModuleEnabled('projects') && taskCompletionData && (
                 <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-6">
                     <div className="mb-4">
                         <h3 className="text-lg font-semibold text-slate-100">Task Completion Status</h3>
@@ -96,7 +98,7 @@ export const ExecutionCharts: React.FC<ExecutionChartsProps> = ({ tenantId, orgI
             )}
 
             {/* PR to PO Cycle Time */}
-            {cycleTimeData && (
+            {isModuleEnabled('procurement') && cycleTimeData && (
                 <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-6">
                     <div className="mb-4">
                         <h3 className="text-lg font-semibold text-slate-100">PR → PO Cycle Time</h3>
@@ -117,7 +119,7 @@ export const ExecutionCharts: React.FC<ExecutionChartsProps> = ({ tenantId, orgI
             )}
 
             {/* Workflow Status Distribution */}
-            {workflowStatusData && (
+            {isModuleEnabled('flow') && workflowStatusData && (
                 <div className="bg-slate-900/50 border border-slate-800 rounded-lg p-6 lg:col-span-2">
                     <div className="mb-4">
                         <h3 className="text-lg font-semibold text-slate-100">Workflow Status Distribution</h3>
