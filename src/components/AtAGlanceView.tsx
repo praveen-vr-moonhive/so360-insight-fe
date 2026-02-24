@@ -4,6 +4,7 @@ import * as LucideIcons from 'lucide-react';
 import { KPICard } from './KPICard';
 import { SignalCard } from './SignalCard';
 import { NeuraSummaryCard } from './NeuraSummaryCard';
+import { ModuleCoveragePanel } from './ModuleCoveragePanel';
 import { insightApi } from '../services/insightApi';
 import type { SegmentSummary, KPI, Signal } from '../types/insight';
 import { useModules } from '@so360/shell-context';
@@ -434,6 +435,9 @@ export const AtAGlanceView: React.FC<AtAGlanceViewProps> = ({ segments, onSegmen
                     <p className="text-slate-400">No critical signals at this time</p>
                 </div>
             )}
+
+            {/* Section 5: Module Coverage */}
+            <ModuleCoveragePanel />
         </div>
     );
 };
