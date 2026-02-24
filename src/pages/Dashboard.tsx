@@ -23,6 +23,14 @@ export const Dashboard: React.FC = () => {
     useEffect(() => {
         loadDashboard();
         loadRecentSignals();
+
+        // Auto-refresh every 5 minutes so stale KPI data is updated without user interaction
+        const pollInterval = setInterval(() => {
+            loadDashboard();
+            loadRecentSignals();
+        }, 5 * 60 * 1000);
+
+        return () => clearInterval(pollInterval);
     }, []);
 
     const loadDashboard = async () => {
