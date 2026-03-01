@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useContext } from 'react';
-import { ShellContext } from '@so360/shell-context';
+import React, { useEffect, useState } from 'react';
+import { useShellBridge } from '@so360/shell-context';
 import { insightApi } from '../services/insightApi';
 
 interface MfeShellInitializerProps {
@@ -7,7 +7,7 @@ interface MfeShellInitializerProps {
 }
 
 export const MfeShellInitializer: React.FC<MfeShellInitializerProps> = ({ children }) => {
-    const shell = useContext(ShellContext);
+    const shell = useShellBridge();
     const [isSynced, setIsSynced] = useState(false);
 
     useEffect(() => {
