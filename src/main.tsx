@@ -39,6 +39,10 @@ const MockShellProvider = ({ children }: { children: React.ReactNode }) => {
         toggleModule: async () => { console.log('[Mock] Toggle module'); },
         refreshModules: async () => { console.log('[Mock] Refresh modules'); },
         modulesLoading: false,
+        notifications: [],
+        unreadCount: 0,
+        markAsRead: async () => { },
+        markAllAsRead: async () => { },
         emitNotification: async () => ({ success: true, notificationIds: [], errors: [] }),
         recordActivity: async () => { },
         // Business Settings (mock for standalone development)

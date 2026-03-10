@@ -111,3 +111,9 @@ export interface TrendData {
         value: number;
     }>;
 }
+
+export interface AiSummarySections {
+    currentPosition: string;
+    issue: string;
+    solution: string;
+}

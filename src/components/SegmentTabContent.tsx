@@ -14,7 +14,7 @@ import { FinanceCharts } from './segments/FinanceCharts';
 import { NeuraSummaryCard } from './NeuraSummaryCard';
 import { insightApi } from '../services/insightApi';
 import { useModules } from '@so360/shell-context';
-import type { SegmentDetail } from '../types/insight';
+import type { SegmentDetail, AiSummarySections } from '../types/insight';
 
 // Modules that must have at least one enabled for the AI summary to be shown/fetched
 const SEGMENT_MODULE_DEPS: Record<string, string[]> = {
@@ -38,6 +38,7 @@ export const SegmentTabContent: React.FC<SegmentTabContentProps> = ({ segmentCod
     const [loadingTrends, setLoadingTrends] = useState(false);
     const [neuraLoading, setNeuraLoading] = useState(true);
     const [neuraSummary, setNeuraSummary] = useState<string | null>(null);
+    const [neuraSections, setNeuraSections] = useState<AiSummarySections | null>(null);
     const [neuraGeneratedAt, setNeuraGeneratedAt] = useState<string | null>(null);
     const [neuraCached, setNeuraCached] = useState(false);
     const [neuraRegenerating, setNeuraRegenerating] = useState(false);
@@ -73,6 +74,7 @@ export const SegmentTabContent: React.FC<SegmentTabContentProps> = ({ segmentCod
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const data = await response.json();
             setNeuraSummary(data.summary || null);
+            setNeuraSections(data.sections || null);
             setNeuraGeneratedAt(data.generated_at || null);
             setNeuraCached(data.cached ?? false);
         } catch (err) {
@@ -93,6 +95,7 @@ export const SegmentTabContent: React.FC<SegmentTabContentProps> = ({ segmentCod
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const data = await response.json();
             setNeuraSummary(data.summary || null);
+            setNeuraSections(data.sections || null);
             setNeuraGeneratedAt(data.generated_at || null);
             setNeuraCached(false);
         } catch (err) {
@@ -254,12 +257,15 @@ export const SegmentTabContent: React.FC<SegmentTabContentProps> = ({ segmentCod
                     workforce: 'blue',
                     finance: 'blue',
                 };
+                const unresolvedForCard = segment.signals.filter((s) => !s.resolved_at).slice(0, 3);
                 return (
                     <NeuraSummaryCard
                         title={`${segment.segment_name} AI Insights`}
                         icon="Sparkles"
                         color={segmentColors[segmentCode] ?? 'blue'}
                         summary={neuraSummary}
+                        sections={neuraSections}
+                        signals={unresolvedForCard}
                         generatedAt={neuraGeneratedAt}
                         cached={neuraCached}
                         loading={neuraLoading}

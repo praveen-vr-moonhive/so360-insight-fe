@@ -6,7 +6,7 @@ import { SignalCard } from './SignalCard';
 import { NeuraSummaryCard } from './NeuraSummaryCard';
 import { ModuleCoveragePanel } from './ModuleCoveragePanel';
 import { insightApi } from '../services/insightApi';
-import type { SegmentSummary, KPI, Signal } from '../types/insight';
+import type { SegmentSummary, KPI, Signal, AiSummarySections } from '../types/insight';
 import { useModules } from '@so360/shell-context';
 import { SEGMENT_MODULE_DEPS } from '../constants/moduleMapping';
 
@@ -32,6 +32,7 @@ interface NeuraSummary {
     icon: string;
     color: 'blue' | 'green' | 'purple' | 'orange';
     summary: string | null;
+    sections: AiSummarySections | null;
     generatedAt: string | null;
     cached: boolean;
     loading: boolean;
@@ -62,6 +63,7 @@ export const AtAGlanceView: React.FC<AtAGlanceViewProps> = ({ segments, onSegmen
             icon: cfg.icon,
             color: cfg.color,
             summary: null,
+            sections: null,
             generatedAt: null,
             cached: false,
             loading: true,
@@ -80,6 +82,7 @@ export const AtAGlanceView: React.FC<AtAGlanceViewProps> = ({ segments, onSegmen
                 icon: cfg.icon,
                 color: cfg.color,
                 summary: null,
+                sections: null,
                 generatedAt: null,
                 cached: false,
                 loading: true,
@@ -179,6 +182,7 @@ export const AtAGlanceView: React.FC<AtAGlanceViewProps> = ({ segments, onSegmen
                 updated[index] = {
                     ...updated[index],
                     summary: data.summary || null,
+                    sections: data.sections || null,
                     generatedAt: data.generated_at || null,
                     cached: data.cached ?? false,
                     loading: false,
@@ -193,6 +197,7 @@ export const AtAGlanceView: React.FC<AtAGlanceViewProps> = ({ segments, onSegmen
                 updated[index] = {
                     ...updated[index],
                     summary: null,
+                    sections: null,
                     generatedAt: null,
                     cached: false,
                     loading: false,
@@ -242,6 +247,7 @@ export const AtAGlanceView: React.FC<AtAGlanceViewProps> = ({ segments, onSegmen
                 updated[index] = {
                     ...updated[index],
                     summary: data.summary || null,
+                    sections: data.sections || null,
                     generatedAt: data.generated_at || null,
                     cached: false,
                     regenerating: false,
@@ -344,22 +350,34 @@ export const AtAGlanceView: React.FC<AtAGlanceViewProps> = ({ segments, onSegmen
             <div>
                 <h2 className="text-xl font-semibold text-slate-100 mb-4">AI Executive Summary</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {neuraSummaries.map((summary, index) => (
-                        <NeuraSummaryCard
-                            key={summary.type}
-                            title={summary.title}
-                            icon={summary.icon}
-                            color={summary.color}
-                            summary={summary.summary}
-                            generatedAt={summary.generatedAt}
-                            cached={summary.cached}
-                            loading={summary.loading}
-                            regenerating={summary.regenerating}
-                            error={summary.error}
-                            onRetry={() => retryNeuraSummary(index)}
-                            onRegenerate={() => regenerateNeuraSummary(index)}
-                        />
-                    ))}
+                    {neuraSummaries.map((summary, index) => {
+                        const cfg = visibleCardConfigs[index];
+                        const segmentSignals = cfg
+                            ? criticalSignals.filter(s =>
+                                cfg.requiredModules.some(mod =>
+                                    (s.module_code || '').replace('module:', '') === mod
+                                )
+                              ).slice(0, 3)
+                            : [];
+                        return (
+                            <NeuraSummaryCard
+                                key={summary.type}
+                                title={summary.title}
+                                icon={summary.icon}
+                                color={summary.color}
+                                summary={summary.summary}
+                                sections={summary.sections}
+                                signals={segmentSignals}
+                                generatedAt={summary.generatedAt}
+                                cached={summary.cached}
+                                loading={summary.loading}
+                                regenerating={summary.regenerating}
+                                error={summary.error}
+                                onRetry={() => retryNeuraSummary(index)}
+                                onRegenerate={() => regenerateNeuraSummary(index)}
+                            />
+                        );
+                    })}
                 </div>
             </div>
 

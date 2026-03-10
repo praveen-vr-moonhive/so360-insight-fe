@@ -1,13 +1,15 @@
 import React from 'react';
-import { Sparkles, AlertCircle, RefreshCw } from 'lucide-react';
+import { Sparkles, AlertCircle, RefreshCw, Activity, AlertTriangle, Lightbulb, Zap } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
+import type { AiSummarySections, Signal } from '../types/insight';
 
 interface NeuraSummaryCardProps {
     title: string;
     icon: string;
     color: 'blue' | 'green' | 'purple' | 'orange';
     summary: string | null;
-    metrics?: Record<string, any>;
+    sections?: AiSummarySections | null;
+    signals?: Signal[];
     generatedAt?: string | null;  // ISO timestamp of when summary was generated
     cached?: boolean;             // Whether this came from cache
     loading?: boolean;
@@ -22,6 +24,8 @@ export const NeuraSummaryCard: React.FC<NeuraSummaryCardProps> = ({
     icon,
     color,
     summary,
+    sections,
+    signals,
     generatedAt,
     cached,
     loading = false,
@@ -125,6 +129,24 @@ export const NeuraSummaryCard: React.FC<NeuraSummaryCardProps> = ({
         );
     }
 
+    // Render a single structured section row
+    const renderSectionRow = (
+        borderColor: string,
+        bgColor: string,
+        textColor: string,
+        LabelIcon: React.ElementType,
+        label: string,
+        content: React.ReactNode,
+    ) => (
+        <div className={`border-l-2 ${borderColor} pl-3 py-2 ${bgColor} rounded-r-md mb-2`}>
+            <div className="flex items-center gap-1.5 mb-1">
+                <LabelIcon className={`w-3.5 h-3.5 ${textColor}`} />
+                <span className={`text-xs font-semibold uppercase tracking-wide ${textColor}`}>{label}</span>
+            </div>
+            {content}
+        </div>
+    );
+
     // Main content state
     return (
         <div
@@ -166,27 +188,67 @@ export const NeuraSummaryCard: React.FC<NeuraSummaryCardProps> = ({
             {/* Title */}
             <h3 className="text-lg font-semibold text-slate-100 mb-3">{title}</h3>
 
-            {/* Summary */}
-            {summary && (
-                <div className="text-sm text-slate-300 mb-4 prose-sm max-w-none leading-relaxed">
-                    {summary.split('\n').map((line, idx) => {
-                        // Handle markdown bold
-                        const parts = line.split(/\*\*(.*?)\*\*/g);
-                        return (
-                            <p key={idx} className="mb-2 last:mb-0">
-                                {parts.map((part, i) =>
-                                    i % 2 === 0 ? (
-                                        <span key={i}>{part}</span>
-                                    ) : (
-                                        <strong key={i} className="text-slate-100 font-semibold">
-                                            {part}
-                                        </strong>
-                                    )
-                                )}
-                            </p>
-                        );
-                    })}
+            {/* Structured 4-section layout — shown when sections are available */}
+            {sections ? (
+                <div className="mb-4 space-y-1">
+                    {renderSectionRow(
+                        'border-l-slate-400',
+                        'bg-slate-700/30',
+                        'text-slate-300',
+                        Activity,
+                        'Current Position',
+                        <p className="text-sm text-slate-300 leading-relaxed">{sections.currentPosition}</p>,
+                    )}
+
+                    {renderSectionRow(
+                        'border-l-red-400',
+                        'bg-red-500/8',
+                        'text-red-400',
+                        AlertTriangle,
+                        'Issue',
+                        <p className="text-sm text-slate-300 leading-relaxed">{sections.issue}</p>,
+                    )}
+
+                    {renderSectionRow(
+                        'border-l-emerald-400',
+                        'bg-emerald-500/8',
+                        'text-emerald-400',
+                        Lightbulb,
+                        'Suggested Solution',
+                        <p className="text-sm text-slate-300 leading-relaxed">{sections.solution}</p>,
+                    )}
+
+                    {renderSectionRow(
+                        'border-l-amber-400',
+                        'bg-amber-500/8',
+                        'text-amber-400',
+                        Zap,
+                        'Action Signals',
+                        <ActionSignalsContent signals={signals} />,
+                    )}
                 </div>
+            ) : (
+                /* Backward-compat: plain text fallback for old cached rows */
+                summary && (
+                    <div className="text-sm text-slate-300 mb-4 prose-sm max-w-none leading-relaxed">
+                        {summary.split('\n').map((line, idx) => {
+                            const parts = line.split(/\*\*(.*?)\*\*/g);
+                            return (
+                                <p key={idx} className="mb-2 last:mb-0">
+                                    {parts.map((part, i) =>
+                                        i % 2 === 0 ? (
+                                            <span key={i}>{part}</span>
+                                        ) : (
+                                            <strong key={i} className="text-slate-100 font-semibold">
+                                                {part}
+                                            </strong>
+                                        )
+                                    )}
+                                </p>
+                            );
+                        })}
+                    </div>
+                )
             )}
 
             {/* Footer: generated timestamp */}
@@ -195,6 +257,41 @@ export const NeuraSummaryCard: React.FC<NeuraSummaryCardProps> = ({
                     {cached ? 'Cached' : 'Generated'} {formatRelativeTime(generatedAt)}
                 </p>
             )}
+        </div>
+    );
+};
+
+const ActionSignalsContent: React.FC<{ signals?: Signal[] }> = ({ signals }) => {
+    const items = (signals || []).slice(0, 2);
+
+    if (items.length === 0) {
+        return <p className="text-sm text-slate-500 italic">No active signals for this segment.</p>;
+    }
+
+    return (
+        <div className="space-y-2">
+            {items.map((signal) => (
+                <div key={signal.id} className="flex flex-col gap-1">
+                    <span className="text-sm text-slate-300 leading-snug">{signal.title}</span>
+                    {signal.recommended_actions && signal.recommended_actions.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                            {signal.recommended_actions.slice(0, 2).map((action, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => {
+                                        if (action.type === 'navigate' && action.path) {
+                                            window.location.assign(action.path);
+                                        }
+                                    }}
+                                    className="px-2 py-0.5 text-xs rounded bg-amber-500/15 text-amber-300 hover:bg-amber-500/25 border border-amber-500/30 transition-colors"
+                                >
+                                    {action.label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            ))}
         </div>
     );
 };
