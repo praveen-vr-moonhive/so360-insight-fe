@@ -37,7 +37,7 @@ export default defineConfig({
     ],
     resolve: {
         alias: {
-            '@so360/formatters': path.resolve(__dirname, '../../so360-shell-fe/packages/formatters/src'),
+            '@so360/formatters': path.resolve(__dirname, '../../so360-shell-fe/packages/formatters/dist/index.js'),
             // Redirect ALL CJS use-sync-external-store sub-paths to ESM shims.
             //
             // Root cause: The CJS `use-sync-external-store` package's `require('react')`
