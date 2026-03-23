@@ -17,7 +17,7 @@ class InsightApiClient {
 
     constructor() {
         this.client = axios.create({
-            baseURL: '/v1/insight',
+            baseURL: `${(import.meta as any).env?.VITE_SO360_INSIGHT_API ?? ''}/v1/insight`,
             headers: {
                 'Content-Type': 'application/json',
             },
