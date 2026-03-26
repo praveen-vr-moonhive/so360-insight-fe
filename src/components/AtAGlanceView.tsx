@@ -165,17 +165,8 @@ export const AtAGlanceView: React.FC<AtAGlanceViewProps> = ({ segments, onSegmen
 
     const fetchSingleNeuraSummary = async (segmentCode: string, index: number) => {
         try {
-            // Fetch from Insight BE — returns cached summary or generates a fresh one
-            const response = await fetch(`/v1/insight/ai-summary/${segmentCode}`, {
-                method: 'GET',
-                headers: insightApi.getAuthHeaders(),
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-
-            const data = await response.json();
+            // Fetch from Insight BE via insightApi client (correct baseURL for all environments)
+            const data = await insightApi.getAiSummary(segmentCode);
 
             setNeuraSummaries((prev) => {
                 const updated = [...prev];
@@ -228,19 +219,7 @@ export const AtAGlanceView: React.FC<AtAGlanceViewProps> = ({ segments, onSegmen
         });
 
         try {
-            const response = await fetch(
-                `/v1/insight/ai-summary/${segmentCode}/regenerate`,
-                {
-                    method: 'POST',
-                    headers: insightApi.getAuthHeaders(),
-                },
-            );
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-
-            const data = await response.json();
+            const data = await insightApi.regenerateAiSummary(segmentCode);
 
             setNeuraSummaries((prev) => {
                 const updated = [...prev];

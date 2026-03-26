@@ -147,6 +147,18 @@ class InsightApiClient {
         const response = await this.client.post('/admin/trigger-computation');
         return response.data;
     }
+
+    // ===== AI SUMMARY METHODS =====
+
+    async getAiSummary(segmentCode: string): Promise<any> {
+        const response = await this.client.get(`/ai-summary/${segmentCode}`);
+        return response.data;
+    }
+
+    async regenerateAiSummary(segmentCode: string): Promise<any> {
+        const response = await this.client.post(`/ai-summary/${segmentCode}/regenerate`);
+        return response.data;
+    }
 }
 
 export const insightApi = new InsightApiClient();
