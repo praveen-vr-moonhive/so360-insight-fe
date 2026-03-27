@@ -85,11 +85,9 @@ const MockShellProvider = ({ children }: { children: React.ReactNode }) => {
 };
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-    <React.StrictMode>
-        <BrowserRouter>
-            <MockShellProvider>
-                <App />
-            </MockShellProvider>
-        </BrowserRouter>
-    </React.StrictMode>
+    <BrowserRouter>
+        <MockShellProvider>
+            <App />
+        </MockShellProvider>
+    </BrowserRouter>
 );

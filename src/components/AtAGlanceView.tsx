@@ -7,7 +7,7 @@ import { NeuraSummaryCard } from './NeuraSummaryCard';
 import { ModuleCoveragePanel } from './ModuleCoveragePanel';
 import { insightApi } from '../services/insightApi';
 import type { SegmentSummary, KPI, Signal, AiSummarySections } from '../types/insight';
-import { useModules } from '@so360/shell-context';
+import { useModules, useFeatureFlags } from '@so360/shell-context';
 import { SEGMENT_MODULE_DEPS } from '../constants/moduleMapping';
 
 // All possible AI summary cards with their required modules
@@ -42,6 +42,9 @@ interface NeuraSummary {
 
 export const AtAGlanceView: React.FC<AtAGlanceViewProps> = ({ segments, onSegmentClick }) => {
     const { isModuleEnabled } = useModules();
+    const { isFeatureEnabled } = useFeatureFlags();
+    const canShowAiSummary = isFeatureEnabled('action:insight:ai_summary');
+    const canRegenerate = isFeatureEnabled('action:insight:ai_summary_regenerate');
     const stripPrefix = (code: string) => code.replace('module:', '');
     const [topKPIs, setTopKPIs] = useState<KPI[]>([]);
     const [criticalSignals, setCriticalSignals] = useState<Signal[]>([]);
@@ -94,8 +97,10 @@ export const AtAGlanceView: React.FC<AtAGlanceViewProps> = ({ segments, onSegmen
 
     useEffect(() => {
         fetchAtAGlanceData();
-        fetchNeuraSummaries();
-    }, []);
+        if (canShowAiSummary) {
+            fetchNeuraSummaries();
+        }
+    }, [canShowAiSummary]);
 
     const fetchAtAGlanceData = async () => {
         try {
@@ -326,39 +331,49 @@ export const AtAGlanceView: React.FC<AtAGlanceViewProps> = ({ segments, onSegmen
     return (
         <div className="space-y-8">
             {/* Section 1: AI Executive Summary */}
-            <div>
-                <h2 className="text-xl font-semibold text-slate-100 mb-4">AI Executive Summary</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {neuraSummaries.map((summary, index) => {
-                        const cfg = visibleCardConfigs[index];
-                        const segmentSignals = cfg
-                            ? criticalSignals.filter(s =>
-                                cfg.requiredModules.some(mod =>
-                                    (s.module_code || '').replace('module:', '') === mod
-                                )
-                              ).slice(0, 3)
-                            : [];
-                        return (
-                            <NeuraSummaryCard
-                                key={summary.type}
-                                title={summary.title}
-                                icon={summary.icon}
-                                color={summary.color}
-                                summary={summary.summary}
-                                sections={summary.sections}
-                                signals={segmentSignals}
-                                generatedAt={summary.generatedAt}
-                                cached={summary.cached}
-                                loading={summary.loading}
-                                regenerating={summary.regenerating}
-                                error={summary.error}
-                                onRetry={() => retryNeuraSummary(index)}
-                                onRegenerate={() => regenerateNeuraSummary(index)}
-                            />
-                        );
-                    })}
+            {canShowAiSummary ? (
+                <div>
+                    <h2 className="text-xl font-semibold text-slate-100 mb-4">AI Executive Summary</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {neuraSummaries.map((summary, index) => {
+                            const cfg = visibleCardConfigs[index];
+                            const segmentSignals = cfg
+                                ? criticalSignals.filter(s =>
+                                    cfg.requiredModules.some(mod =>
+                                        (s.module_code || '').replace('module:', '') === mod
+                                    )
+                                  ).slice(0, 3)
+                                : [];
+                            return (
+                                <NeuraSummaryCard
+                                    key={summary.type}
+                                    title={summary.title}
+                                    icon={summary.icon}
+                                    color={summary.color}
+                                    summary={summary.summary}
+                                    sections={summary.sections}
+                                    signals={segmentSignals}
+                                    generatedAt={summary.generatedAt}
+                                    cached={summary.cached}
+                                    loading={summary.loading}
+                                    regenerating={summary.regenerating}
+                                    error={summary.error}
+                                    onRetry={() => retryNeuraSummary(index)}
+                                    onRegenerate={canRegenerate ? () => regenerateNeuraSummary(index) : undefined}
+                                />
+                            );
+                        })}
+                    </div>
                 </div>
-            </div>
+            ) : (
+                <div className="bg-slate-900/30 border border-slate-800 rounded-lg p-6 text-center">
+                    <h2 className="text-xl font-semibold text-slate-100 mb-2">AI Executive Summary</h2>
+                    <p className="text-slate-400 text-sm mb-3">AI-powered executive summaries are available on Growth plans and above.</p>
+                    <span className="inline-block px-3 py-1.5 bg-blue-600/20 border border-blue-500/30 rounded-lg text-blue-400 text-xs font-medium">
+                        Upgrade to Growth to unlock AI Summaries
+                    </span>
+                </div>
+            )}
 
             {/* Section 2: Segment Summary Cards */}
             <div>
