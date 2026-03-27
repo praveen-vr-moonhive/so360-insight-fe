@@ -8,7 +8,7 @@ import { SegmentTabContent } from '../components/SegmentTabContent';
 import { DataFreshnessIndicator } from '../components/DataFreshnessIndicator';
 import { insightApi } from '../services/insightApi';
 import type { SegmentSummary } from '../types/insight';
-import { useModules } from '@so360/shell-context';
+import { useModules, useFeatureFlags } from '@so360/shell-context';
 import { SEGMENT_MODULE_DEPS } from '../constants/moduleMapping';
 
 interface InsightDashboardProps {
@@ -26,6 +26,8 @@ export const InsightDashboard: React.FC<InsightDashboardProps> = ({ initialTab }
     const [refreshError, setRefreshError] = useState<string | null>(null);
     const freshnessKey = useRef(0);
     const { isModuleEnabled } = useModules();
+    const { isFeatureEnabled } = useFeatureFlags();
+    const canRefresh = isFeatureEnabled('action:insight:refresh_on_demand');
 
     // Sync active tab when navigating between segment routes (e.g. /insight/revenue → /insight/execution)
     useEffect(() => {
@@ -177,22 +179,26 @@ export const InsightDashboard: React.FC<InsightDashboardProps> = ({ initialTab }
                     </div>
                     <div className="flex flex-col items-end gap-2 flex-shrink-0">
                         <DataFreshnessIndicator key={freshnessKey.current} />
-                        <button
-                            onClick={handleRefresh}
-                            disabled={isRefreshing || cooldownSeconds > 0}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                                isRefreshing || cooldownSeconds > 0
-                                    ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                                    : 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-slate-100'
-                            }`}
-                        >
-                            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                            {isRefreshing
-                                ? 'Refreshing...'
-                                : cooldownSeconds > 0
-                                    ? `Refresh in ${formatCooldown(cooldownSeconds)}`
-                                    : 'Refresh'}
-                        </button>
+                        {canRefresh ? (
+                            <button
+                                onClick={handleRefresh}
+                                disabled={isRefreshing || cooldownSeconds > 0}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                    isRefreshing || cooldownSeconds > 0
+                                        ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                                        : 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-slate-100'
+                                }`}
+                            >
+                                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                                {isRefreshing
+                                    ? 'Refreshing...'
+                                    : cooldownSeconds > 0
+                                        ? `Refresh in ${formatCooldown(cooldownSeconds)}`
+                                        : 'Refresh'}
+                            </button>
+                        ) : (
+                            <span className="text-xs text-slate-500 italic">Upgrade to refresh on demand</span>
+                        )}
                         {refreshError && (
                             <span className="text-xs text-red-400">{refreshError}</span>
                         )}

@@ -13,7 +13,7 @@ import { WorkforceCharts } from './segments/WorkforceCharts';
 import { FinanceCharts } from './segments/FinanceCharts';
 import { NeuraSummaryCard } from './NeuraSummaryCard';
 import { insightApi } from '../services/insightApi';
-import { useModules } from '@so360/shell-context';
+import { useModules, useFeatureFlags } from '@so360/shell-context';
 import type { SegmentDetail, AiSummarySections } from '../types/insight';
 
 // Modules that must have at least one enabled for the AI summary to be shown/fetched
@@ -31,6 +31,9 @@ interface SegmentTabContentProps {
 
 export const SegmentTabContent: React.FC<SegmentTabContentProps> = ({ segmentCode }) => {
     const { isModuleEnabled } = useModules();
+    const { isFeatureEnabled } = useFeatureFlags();
+    const canShowAiSummaryFeature = isFeatureEnabled('action:insight:ai_summary');
+    const canRegenerate = isFeatureEnabled('action:insight:ai_summary_regenerate');
     const [segment, setSegment] = useState<SegmentDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -44,9 +47,10 @@ export const SegmentTabContent: React.FC<SegmentTabContentProps> = ({ segmentCod
     const [neuraRegenerating, setNeuraRegenerating] = useState(false);
     const [neuraError, setNeuraError] = useState<string | null>(null);
 
-    // AI summary is only shown when at least one of the segment's required modules is enabled
+    // AI summary requires both: feature flag enabled AND at least one required module enabled
     const summaryModules = SEGMENT_MODULE_DEPS[segmentCode] ?? [];
-    const canShowAiSummary = summaryModules.length === 0 || summaryModules.some(m => isModuleEnabled(m));
+    const hasRequiredModules = summaryModules.length === 0 || summaryModules.some(m => isModuleEnabled(m));
+    const canShowAiSummary = canShowAiSummaryFeature && hasRequiredModules;
 
     useEffect(() => {
         fetchSegmentDetail();
@@ -272,7 +276,7 @@ export const SegmentTabContent: React.FC<SegmentTabContentProps> = ({ segmentCod
                         regenerating={neuraRegenerating}
                         error={neuraError}
                         onRetry={fetchNeuraInsight}
-                        onRegenerate={handleNeuraRegenerate}
+                        onRegenerate={canRegenerate ? handleNeuraRegenerate : undefined}
                     />
                 );
             })()}
@@ -290,12 +294,15 @@ export const SegmentTabContent: React.FC<SegmentTabContentProps> = ({ segmentCod
             )}
 
             {/* Section 2.5: Rich Chart Gallery */}
-            {renderSegmentCharts() && (
-                <div>
-                    <h2 className="text-xl font-semibold text-slate-100 mb-4">Analytics Dashboard</h2>
-                    {renderSegmentCharts()}
-                </div>
-            )}
+            {(() => {
+                const charts = renderSegmentCharts();
+                return charts ? (
+                    <div>
+                        <h2 className="text-xl font-semibold text-slate-100 mb-4">Analytics Dashboard</h2>
+                        {charts}
+                    </div>
+                ) : null;
+            })()}
 
             {/* Section 3: Trend Charts with Time Range Selector */}
             {segment.trends && segment.trends.length > 0 && (

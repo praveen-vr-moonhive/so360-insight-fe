@@ -3,7 +3,7 @@ import { AlertCircle, Filter } from 'lucide-react';
 import { insightApi } from '../services/insightApi';
 import { SignalCard } from '../components/SignalCard';
 import type { Signal } from '../types/insight';
-import { useModules } from '@so360/shell-context';
+import { useModules, useFeatureFlags } from '@so360/shell-context';
 
 const MODULE_CODE_TO_ID: Record<string, string> = {
     'module:crm': 'crm',
@@ -19,14 +19,18 @@ const MODULE_CODE_TO_ID: Record<string, string> = {
 
 export const SignalsPage: React.FC = () => {
     const { isModuleEnabled } = useModules();
+    const { isFeatureEnabled } = useFeatureFlags();
+    const canAccessSignals = isFeatureEnabled('submodule:insight:signals');
     const [signals, setSignals] = useState<Signal[]>([]);
     const [loading, setLoading] = useState(true);
     const [severityFilter, setSeverityFilter] = useState<string>('all');
     const [unresolvedOnly, setUnresolvedOnly] = useState(true);
 
     useEffect(() => {
-        loadSignals();
-    }, [severityFilter, unresolvedOnly]);
+        if (canAccessSignals) {
+            loadSignals();
+        }
+    }, [severityFilter, unresolvedOnly, canAccessSignals]);
 
     const loadSignals = async () => {
         try {
@@ -58,6 +62,23 @@ export const SignalsPage: React.FC = () => {
         const moduleId = MODULE_CODE_TO_ID[signal.module_code];
         return !moduleId || isModuleEnabled(moduleId);
     });
+
+    if (!canAccessSignals) {
+        return (
+            <div className="min-h-screen bg-slate-950 p-6">
+                <div className="max-w-2xl mx-auto mt-16 text-center">
+                    <AlertCircle className="w-16 h-16 text-slate-600 mx-auto mb-4" />
+                    <h2 className="text-2xl font-bold text-slate-100 mb-2">AI Signals</h2>
+                    <p className="text-slate-400 mb-6">
+                        Intelligent anomaly detection and automated alerts are available on Growth plans and above.
+                    </p>
+                    <div className="inline-block px-4 py-2 bg-blue-600/20 border border-blue-500/30 rounded-lg text-blue-400 text-sm font-medium">
+                        Upgrade to Growth to unlock Signals
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-slate-950 p-6">

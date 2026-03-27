@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { ChartExport } from './ChartExport';
+import { useFeatureFlags } from '@so360/shell-context';
 
 interface ChartContainerProps {
     title: string;
@@ -27,6 +28,9 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
     onExportCSV,
     className = '',
 }) => {
+    const { isFeatureEnabled } = useFeatureFlags();
+    const canExport = isFeatureEnabled('action:insight:chart_export');
+
     return (
         <div className={`bg-slate-900/50 border border-slate-800 rounded-lg p-6 ${className}`}>
             {/* Header */}
@@ -37,7 +41,7 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
                         <p className="text-sm text-slate-400 mt-1">{description}</p>
                     )}
                 </div>
-                {exportData.length > 0 && (
+                {canExport && exportData.length > 0 && (
                     <ChartExport
                         chartId={chartId}
                         chartTitle={title}
