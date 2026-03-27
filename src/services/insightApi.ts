@@ -9,6 +9,28 @@ import type {
     TrendData,
 } from '../types/insight';
 
+// TTL cache for API responses — prevents re-fetches on tab switches and re-renders
+const apiCache = new Map<string, { data: any; expiresAt: number }>();
+const CACHE_TTL = 2 * 60 * 1000; // 2 minutes
+
+function cachedGet<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
+    const cached = apiCache.get(key);
+    if (cached && cached.expiresAt > Date.now()) {
+        return Promise.resolve(cached.data as T);
+    }
+    return fetcher().then(data => {
+        apiCache.set(key, { data, expiresAt: Date.now() + CACHE_TTL });
+        return data;
+    });
+}
+
+function invalidateCache(prefix?: string): void {
+    if (!prefix) { apiCache.clear(); return; }
+    for (const key of apiCache.keys()) {
+        if (key.startsWith(prefix)) apiCache.delete(key);
+    }
+}
+
 class InsightApiClient {
     private client: AxiosInstance;
     private tenantId: string | null = null;
@@ -17,7 +39,7 @@ class InsightApiClient {
 
     constructor() {
         this.client = axios.create({
-            baseURL: `${(import.meta as any).env?.VITE_SO360_INSIGHT_API ?? ''}/v1/insight`,
+            baseURL: `${(typeof window !== 'undefined' && (window as any).VITE_SO360_INSIGHT_API) || (import.meta as any).env?.VITE_SO360_INSIGHT_API || ''}/v1/insight`,
             headers: {
                 'Content-Type': 'application/json',
             },
@@ -59,13 +81,17 @@ class InsightApiClient {
     }
 
     async getDashboard(): Promise<Dashboard> {
-        const response = await this.client.get<Dashboard>('/dashboard');
-        return response.data;
+        return cachedGet('dashboard', async () => {
+            const response = await this.client.get<Dashboard>('/dashboard');
+            return response.data;
+        });
     }
 
     async getModuleInsights(moduleCode: string): Promise<ModuleInsights> {
-        const response = await this.client.get<ModuleInsights>(`/module/${moduleCode}`);
-        return response.data;
+        return cachedGet(`module:${moduleCode}`, async () => {
+            const response = await this.client.get<ModuleInsights>(`/module/${moduleCode}`);
+            return response.data;
+        });
     }
 
     async getSignals(params?: {
@@ -75,8 +101,10 @@ class InsightApiClient {
         page?: number;
         limit?: number;
     }): Promise<SignalsResponse> {
-        const response = await this.client.get<SignalsResponse>('/signals', { params });
-        return response.data;
+        return cachedGet(`signals:${JSON.stringify(params || {})}`, async () => {
+            const response = await this.client.get<SignalsResponse>('/signals', { params });
+            return response.data;
+        });
     }
 
     async resolveSignal(signalId: string, resolutionNote?: string): Promise<Signal> {
@@ -94,37 +122,49 @@ class InsightApiClient {
     // ===== SEGMENT SYSTEM METHODS =====
 
     async getSegments(): Promise<SegmentSummary[]> {
-        const response = await this.client.get<SegmentSummary[]>('/segments');
-        return response.data;
+        return cachedGet('segments', async () => {
+            const response = await this.client.get<SegmentSummary[]>('/segments');
+            return response.data;
+        });
     }
 
     async getSegmentDetail(segmentCode: string): Promise<SegmentDetail> {
-        const response = await this.client.get<SegmentDetail>(`/segment/${segmentCode}`);
-        return response.data;
+        return cachedGet(`segment:${segmentCode}`, async () => {
+            const response = await this.client.get<SegmentDetail>(`/segment/${segmentCode}`);
+            return response.data;
+        });
     }
 
     async getSegmentContext(segmentCode: string): Promise<any> {
-        const response = await this.client.get(`/segment/${segmentCode}/context`);
-        return response.data;
+        return cachedGet(`segment-ctx:${segmentCode}`, async () => {
+            const response = await this.client.get(`/segment/${segmentCode}/context`);
+            return response.data;
+        });
     }
 
     async getKPITrend(kpiCode: string, days: number = 30): Promise<TrendData> {
-        const response = await this.client.get<TrendData>(`/kpi/${kpiCode}/trend`, {
-            params: { days },
+        return cachedGet(`trend:${kpiCode}:${days}`, async () => {
+            const response = await this.client.get<TrendData>(`/kpi/${kpiCode}/trend`, {
+                params: { days },
+            });
+            return response.data;
         });
-        return response.data;
     }
 
     // ===== CHART DATA METHODS (Pre-computed) =====
 
     async getChartData(segmentCode: string, chartType: string): Promise<any> {
-        const response = await this.client.get(`/chart-data/${segmentCode}/${chartType}`);
-        return response.data;
+        return cachedGet(`chart:${segmentCode}:${chartType}`, async () => {
+            const response = await this.client.get(`/chart-data/${segmentCode}/${chartType}`);
+            return response.data;
+        });
     }
 
     async getDataFreshness(): Promise<any> {
-        const response = await this.client.get('/data-freshness');
-        return response.data;
+        return cachedGet('freshness', async () => {
+            const response = await this.client.get('/data-freshness');
+            return response.data;
+        });
     }
 
     // ===== ON-DEMAND REFRESH =====
@@ -137,6 +177,7 @@ class InsightApiClient {
         cooldown_seconds_remaining?: number;
         summary?: { kpis_computed: number; charts_generated: number; errors: string[] };
     }> {
+        invalidateCache(); // Clear all cached data on manual refresh
         const response = await this.client.post('/refresh');
         return response.data;
     }
@@ -151,11 +192,14 @@ class InsightApiClient {
     // ===== AI SUMMARY METHODS =====
 
     async getAiSummary(segmentCode: string): Promise<any> {
-        const response = await this.client.get(`/ai-summary/${segmentCode}`);
-        return response.data;
+        return cachedGet(`ai-summary:${segmentCode}`, async () => {
+            const response = await this.client.get(`/ai-summary/${segmentCode}`);
+            return response.data;
+        });
     }
 
     async regenerateAiSummary(segmentCode: string): Promise<any> {
+        invalidateCache('ai-summary:');
         const response = await this.client.post(`/ai-summary/${segmentCode}/regenerate`);
         return response.data;
     }
