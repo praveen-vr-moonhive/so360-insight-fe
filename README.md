@@ -1,135 +1,113 @@
 # SO360 Insight Frontend
 
-SO360 Insight MFE - KPI & Signal Analysis Dashboard
+React MFE providing the Insight analytics dashboard — cross-module KPI cards, business segment deep-dives, signal management, AI-generated summaries, and 10 chart types. Loaded by the Shell at `/insight/*`.
 
-## Overview
+## Module Federation Details
 
-The Insight frontend provides a beautiful, real-time dashboard for viewing KPIs and managing intelligent signals across all SO360 modules.
-
-## Features
-
-- **Insight Dashboard**: Real-time KPI cards with trend indicators
-- **Signals Panel**: Active signals with severity badges and resolution actions
-- **Module Insights**: Module-specific KPI and signal views
-- **Dark Theme**: Premium slate color palette matching SO360 design system
-- **Responsive Design**: Mobile, tablet, and desktop layouts
+| | |
+|-|-|
+| Federation Name | `insight_app` |
+| Remote Entry | `http://localhost:3024/assets/remoteEntry.js` |
+| Exposed Module | `./App` |
+| Port | 3024 |
+| Shell Route | `/insight/*` |
+| Shell Wrapper | `RemoteInsight.tsx` in `so360-shell-fe` |
 
 ## Tech Stack
 
-- React 19.2
-- Vite 5.4
-- TypeScript 5.7
-- Tailwind CSS 3.4
-- React Router 7.12
-- Framer Motion 12
-- Lucide React
-- Axios
+| | |
+|-|-|
+| Framework | React 19.2 |
+| Build Tool | Vite 5.4 |
+| Language | TypeScript 5.7 |
+| Styling | Tailwind CSS 3.4 |
+| Federation | @originjs/vite-plugin-federation 1.4 |
+| Animation | Framer Motion 12 |
+| State | React Query (server state) + URL state (filters) |
+| Runtime | Node.js 22.12+ |
 
-## Port
+## Shared Singletons
+`react`, `react-dom`, `react-router-dom`, `framer-motion`, `lucide-react`, `@so360/shell-context`, `@so360/design-system`, `@so360/event-bus`
 
-Development: `3024`
-Preview (Production Build): `3024`
+## Pages & Routes
 
-## Module Federation
+| Route | Component | Description |
+|-------|-----------|-------------|
+| `/insight` | `InsightDashboard` | Top-level KPI summary and signals overview |
+| `/insight/dashboard` | `Dashboard` | Full dashboard with segment cards and data freshness |
+| `/insight/signals` | `SignalsPage` | Signal list with severity filter, module filter, resolution |
+| `/insight/segment` | `SegmentOverview` | All 5 business segments with summary metrics |
+| `/insight/segment/:code` | `SegmentDetail` | Deep-dive: charts, KPI trends, AI summary |
 
-- **Federation Name**: `insight_app`
-- **Exposed**: `./App`
-- **Remote Entry**: `http://localhost:3024/assets/remoteEntry.js`
+**Business Segments:** `revenue`, `execution`, `delivery`, `workforce`, `finance`
 
-## Installation
+## Key Components
 
+### KPI & Signal Display
+| Component | Purpose |
+|-----------|---------|
+| `KPICard` | KPI metric card with trend indicator and sparkline |
+| `SignalCard` | Signal alert with severity badge and resolve action |
+| `NeuraSummaryCard` | AI-generated narrative summary for segment |
+| `DataFreshnessIndicator` | Shows last computation timestamp and staleness |
+
+### Chart Components (10 types)
+| Component | Use Case |
+|-----------|---------|
+| `BarChart` | Comparison metrics |
+| `LineChart` | Time-series trends |
+| `AreaChart` | Cumulative metrics |
+| `PieChart` | Distribution / composition |
+| `FunnelChart` | Conversion / pipeline stages |
+| `GaugeChart` | Target vs actual |
+| `WaterfallChart` | Variance / bridge analysis |
+| `SparklineChart` | Compact inline trend |
+| `ChartContainer` | Responsive wrapper for all charts |
+| `ChartExport` | Export chart data (CSV/PNG) |
+
+## How to Run
+
+### Prerequisites
+Build shared packages before starting:
+```bash
+cd so360-shell-fe/packages/shell-context && npm run build
+cd so360-shell-fe/packages/design-system && npm run build
+cd so360-shell-fe/packages/event-bus && npm run build
+cd so360-shell-fe/packages/formatters && npm run build
+```
+
+### MFE Preview Mode (Shell integration)
 ```bash
 npm install
+npm run build && npm run preview    # port 3024
 ```
 
-## Running the MFE
-
-**CRITICAL: Always use build + preview for MFEs**
-
+### Standalone Dev Mode
 ```bash
-# Build the MFE
-npm run build
-
-# Serve the production build (required for Module Federation)
-npm run preview
+npm run dev    # port 3024, standalone only
 ```
 
-DO NOT use `npm run dev` - it does not produce a valid `remoteEntry.js`.
+> **Never use `npm run dev` for Shell integration.** Must use `build && preview` to produce `remoteEntry.js`.
 
 ## Environment Variables
-
-Create `.env` file (see `.env.example`):
-
 ```env
-VITE_SUPABASE_URL=your_supabase_project_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-VITE_API_BASE_URL=http://localhost:3023
+VITE_BASE_URL=http://localhost:3024/
+VITE_SO360_INSIGHT_API=http://localhost:3023
+VITE_SO360_CORE_API=http://localhost:3000
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-## Routes
+## UI Theme (Premium Dark Mode)
 
-- `/insight/dashboard` - Main insight dashboard
-- `/insight/signals` - Signals management page
-
-## Integration with Shell
-
-The Shell loads this MFE via Module Federation:
-
-```typescript
-// In Shell vite.config.ts
-remotes: {
-    insight_app: 'http://localhost:3024/assets/remoteEntry.js',
-}
-
-// In Shell App.tsx
-<Route path="/insight/*" element={<RemoteInsight />} />
+```
+Pages:     bg-slate-950
+Cards:     bg-slate-900/50 border border-slate-800
+Text:      text-slate-100 (primary) / text-slate-400 (secondary)
+Charts:    recharts with slate/blue color tokens
 ```
 
-## MFE Initializer Pattern
+## Cross-Module Integrations
 
-The `MfeShellInitializer` component syncs with Shell context before rendering:
-
-```typescript
-// Waits for tenant and org IDs from Shell
-// Sets API client headers automatically
-// Shows loading state until synced
-```
-
-## API Client
-
-The `insightApi` client auto-injects multi-tenant headers:
-
-```typescript
-import { insightApi } from './services/insightApi';
-
-// Headers automatically added from Shell context
-const dashboard = await insightApi.getDashboard();
-```
-
-## Shared Packages
-
-- `@so360/shell-context` - Shell context hooks
-- `@so360/design-system` - Shared UI components
-- `@so360/event-bus` - Event-driven communication
-
-## Development Workflow
-
-1. Make code changes
-2. Rebuild: `npm run build`
-3. Restart preview: `npm run preview`
-4. Verify `remoteEntry.js` accessible at http://localhost:3024/assets/remoteEntry.js
-
-## Testing
-
-```bash
-# Lint code
-npm run lint
-```
-
-## Notes
-
-- All data fetching goes through NestJS backend (no direct Supabase access)
-- Dark theme matches SO360 design standards
-- Signals can be resolved directly from UI
-- KPIs computed in real-time by backend
-- Module Federation requires production build (preview mode)
+- **Neura FE**: Neura reads AI summaries from Insight BE; `NeuraPanel` can show segment summaries inline
+- **Shell**: Publishes `SIGNAL_RAISED` and `SIGNAL_RESOLVED` events via `@so360/event-bus`
