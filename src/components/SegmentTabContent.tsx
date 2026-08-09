@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { toast } from '@so360/design-system';
 import { getInsightIcon } from '../constants/iconMap';
 import { KPICard } from './KPICard';
 import { AlertCard } from './AlertCard';
@@ -163,6 +164,7 @@ export const SegmentTabContent: React.FC<SegmentTabContentProps> = ({ segmentCod
     const handleResolveAlert = async (alertId: string) => {
         try {
             await insightApi.resolveAlert(alertId);
+            toast.success('Alert resolved');
             if (segment) {
                 setSegment({
                     ...segment,

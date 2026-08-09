@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, TrendingUp, AlertCircle } from 'lucide-react';
+import { toast } from '@so360/design-system';
 import { insightApi } from '../services/insightApi';
 import { KPICard } from '../components/KPICard';
 import { AlertCard } from '../components/AlertCard';
@@ -59,6 +60,7 @@ export const Dashboard: React.FC = () => {
     const handleResolveAlert = async (alertId: string) => {
         try {
             await insightApi.resolveAlert(alertId, 'Resolved from dashboard');
+            toast.success('Alert resolved');
             loadRecentAlerts();
             loadDashboard();
         } catch (err) {

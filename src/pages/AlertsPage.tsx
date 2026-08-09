@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AlertCircle, Filter } from 'lucide-react';
+import { toast } from '@so360/design-system';
 import { insightApi } from '../services/insightApi';
 import { AlertCard } from '../components/AlertCard';
 import type { Alert } from '../types/insight';
@@ -53,6 +54,7 @@ export const AlertsPage: React.FC = () => {
     const handleResolveAlert = async (alertId: string) => {
         try {
             await insightApi.resolveAlert(alertId, 'Resolved from alerts page');
+            toast.success('Alert resolved');
             loadAlerts();
         } catch (err) {
             console.error('Failed to resolve alert:', err);

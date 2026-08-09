@@ -40,3 +40,19 @@ export const FeatureRoute = ({ state, loading, children, hiddenFallback = null, 
   // enabled / read_only
   return React.createElement(React.Fragment, null, children);
 };
+
+// ===== Universal toast (Phase 3 toast standardization) =====
+export const toast = {
+  success: (_message: any, _opts?: any) => 'toast-id',
+  error: (_message: any, _opts?: any) => 'toast-id',
+  warning: (_message: any, _opts?: any) => 'toast-id',
+  info: (_message: any, _opts?: any) => 'toast-id',
+  promise: <T,>(p: Promise<T> | (() => Promise<T>), _msgs?: any) => (typeof p === 'function' ? (p as () => Promise<T>)() : p),
+  dismiss: (_id?: string) => {},
+};
+export const useToast = () => toast;
+export const getErrorMessage = (_e: any, fallback?: string) => fallback ?? 'error';
+export const attachToastErrorHandler = (_client?: any, _opts?: any) => 0;
+export const toastBus = { subscribe: () => () => {}, getToasts: () => [], dismiss: (_id?: string) => {} };
+export const ToastViewport = () => null;
+export const ToastProvider = ({ children }: any) => React.createElement(React.Fragment, null, children);

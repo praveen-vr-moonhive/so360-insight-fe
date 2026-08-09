@@ -5,6 +5,7 @@ import { KPICard } from './KPICard';
 import { AlertCard } from './AlertCard';
 import { NeuraSummaryCard } from './NeuraSummaryCard';
 import { ModuleCoveragePanel } from './ModuleCoveragePanel';
+import { toast } from '@so360/design-system';
 import { insightApi } from '../services/insightApi';
 import type { SegmentSummary, KPI, Alert, AiSummarySections, CorrelationPair } from '../types/insight';
 import { useModules, useFeatureFlags, useShellBridge, useShell } from '@so360/shell-context';
@@ -361,6 +362,7 @@ export const AtAGlanceView: React.FC<AtAGlanceViewProps> = ({ segments, onSegmen
     const handleResolveAlert = async (alertId: string) => {
         try {
             await insightApi.resolveAlert(alertId);
+            toast.success('Alert resolved');
             setCriticalAlerts((prev) => prev.filter((s) => s.id !== alertId));
         } catch (err) {
             console.error('Failed to resolve alert:', err);

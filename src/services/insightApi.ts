@@ -1,4 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
+import { attachToastErrorHandler } from '@so360/design-system';
 import { createTtlCache } from './ttlCache';
 import type {
     Dashboard,
@@ -72,6 +73,11 @@ class InsightApiClient {
                 return Promise.reject(error);
             },
         );
+
+        // Baseline user-visible error surfacing: every failed MUTATION toasts the
+        // normalized server message. 401/402 stay with their existing handlers;
+        // reads never toast; opt out per-call with { suppressToast: true }.
+        attachToastErrorHandler(this.client);
     }
 
     setTenantId(tenantId: string) {

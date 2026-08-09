@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { Download, FileImage, FileSpreadsheet } from 'lucide-react';
+import { toast } from '@so360/design-system';
 
 interface ChartExportProps {
     chartId: string;
@@ -39,7 +40,7 @@ export const ChartExport: React.FC<ChartExportProps> = ({
         } else {
             // Default PNG export would require html2canvas library
             // For now, just show a message
-            alert('PNG export requires html2canvas library. Install it to enable this feature.');
+            toast.info('PNG export requires html2canvas library. Install it to enable this feature.');
         }
         setShowMenu(false);
     };
