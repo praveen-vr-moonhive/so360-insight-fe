@@ -3,12 +3,17 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 let mockShell: any = { effectiveFlagsLoaded: true, isFeatureEnabled: () => true };
+const DEFAULT_SHELL_CTX = {
+  currentOrg: { id: 'mock-org-id', tenant_id: 'mock-tenant-id', name: 'Mock Org' },
+  accessToken: null as string | null,
+};
+let mockShellCtx: any = { ...DEFAULT_SHELL_CTX };
 
 vi.mock('@so360/shell-context', () => ({
   useShellBridge: () => mockShell,
   useModules: () => ({ isModuleEnabled: () => true }),
   useFeatureFlags: () => ({ isFeatureEnabled: (key: string) => mockShell.isFeatureEnabled(key) }),
-  useShell: () => ({ currentOrg: { id: 'mock-org-id', tenant_id: 'mock-tenant-id', name: 'Mock Org' } }),
+  useShell: () => mockShellCtx,
 }));
 
 vi.mock('../services/insightApi', () => ({
@@ -65,6 +70,7 @@ describe('AtAGlanceView', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     mockShell = { effectiveFlagsLoaded: true, isFeatureEnabled: () => true };
+    mockShellCtx = { ...DEFAULT_SHELL_CTX };
     mockApi.getAlerts.mockResolvedValue({ data: [] });
     mockApi.getSegmentDetail.mockResolvedValue({
       kpis: [{ kpi_code: 'r1', kpi_name: 'Total Revenue', value: 50000, unit: 'USD', trend: 'up', category: 'critical', module_code: 'module:crm' }],
@@ -74,6 +80,48 @@ describe('AtAGlanceView', () => {
     (globalThis.fetch as any).mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ mo_in_progress: 5, mo_planned: 3, wo_open: 2, scrap_pct: 1 }),
+    });
+  });
+
+  describe('Given the Manufacturing at-a-glance card', () => {
+    it('When the backend returns metrics / Then the open-MO count is shown', async () => {
+      render(<AtAGlanceView segments={mockSegments} onSegmentClick={vi.fn()} />);
+      await waitFor(() => expect(screen.getByText('Manufacturing')).toBeInTheDocument());
+      // mo_in_progress (5) + mo_planned (3)
+      await waitFor(() => expect(screen.getByText('8')).toBeInTheDocument());
+    });
+
+    it('When the Shell supplies an access token / Then the request carries it as a bearer token', async () => {
+      mockShellCtx = { ...DEFAULT_SHELL_CTX, accessToken: 'tok-xyz' };
+      render(<AtAGlanceView segments={mockSegments} onSegmentClick={vi.fn()} />);
+
+      await waitFor(() => expect(globalThis.fetch as any).toHaveBeenCalled());
+      const [, options] = (globalThis.fetch as any).mock.calls[0];
+      expect(options.headers['Authorization']).toBe('Bearer tok-xyz');
+      expect(options.headers['X-Org-Id']).toBe('mock-org-id');
+    });
+
+    it('When the request hits the Shell SPA fallback / Then the card degrades quietly with no parser detail', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      (globalThis.fetch as any).mockResolvedValue({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        headers: { get: () => 'text/html' },
+        json: () => Promise.reject(new SyntaxError("Unexpected token '<'")),
+        text: () => Promise.resolve('<!doctype html>'),
+      });
+
+      const { container } = render(<AtAGlanceView segments={mockSegments} onSegmentClick={vi.fn()} />);
+      await waitFor(() => expect(screen.getByText('Manufacturing')).toBeInTheDocument());
+
+      expect(screen.getByText('Connecting…')).toBeInTheDocument();
+      const rendered = container.textContent ?? '';
+      expect(rendered).not.toContain('Unexpected token');
+      expect(rendered).not.toContain('3034');
+      // Detail is logged internally instead.
+      await waitFor(() => expect(errorSpy).toHaveBeenCalled());
+      errorSpy.mockRestore();
     });
   });
 
