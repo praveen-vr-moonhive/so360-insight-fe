@@ -7,6 +7,7 @@ import { NeuraSummaryCard } from './NeuraSummaryCard';
 import { ModuleCoveragePanel } from './ModuleCoveragePanel';
 import { toast } from '@so360/design-system';
 import { insightApi } from '../services/insightApi';
+import { manufacturingApi, buildManufacturingHeaders } from '../services/manufacturingApi';
 import type { SegmentSummary, KPI, Alert, AiSummarySections, CorrelationPair } from '../types/insight';
 import { useModules, useFeatureFlags, useShellBridge, useShell } from '@so360/shell-context';
 import { SEGMENT_MODULE_DEPS } from '../constants/moduleMapping';
@@ -15,17 +16,17 @@ import { Factory } from 'lucide-react';
 // Compact Manufacturing card for At-a-Glance — fetches summary directly from
 // manufacturing-be (insight-be doesn't yet aggregate manufacturing metrics).
 const ManufacturingAtAGlanceCard: React.FC<{ onClick: () => void }> = ({ onClick }) => {
-    const { currentOrg } = useShell();
+    const { currentOrg, accessToken } = useShell();
     const [data, setData] = useState<any>(null);
     useEffect(() => {
         if (!currentOrg?.id) return;
-        const headers = {
-            'X-Tenant-Id': currentOrg.tenant_id || '',
-            'X-Org-Id': currentOrg.id,
-        };
-        fetch('/manufacturing-api/v1/manufacturing/reports/summary', { headers })
-            .then(r => r.ok ? r.json() : null).then(setData).catch(() => {});
-    }, [currentOrg?.id, currentOrg?.tenant_id]);
+        const headers = buildManufacturingHeaders(currentOrg.tenant_id || '', currentOrg.id, accessToken);
+        manufacturingApi.getSummary(headers)
+            .then(setData)
+            // Detail is logged by manufacturingApi; the card just stays in its
+            // neutral placeholder state and recovers on the next mount/poll.
+            .catch(() => setData(null));
+    }, [currentOrg?.id, currentOrg?.tenant_id, accessToken]);
     return (
         <button onClick={onClick}
             className="bg-slate-900/50 rounded-lg border border-emerald-500/20 p-4 text-left transition-all hover:shadow-lg hover:border-emerald-500/40 group">

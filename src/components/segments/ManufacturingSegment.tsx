@@ -1,41 +1,33 @@
-import React, { useEffect, useState } from 'react';
-import { Loader2, Factory, AlertCircle } from 'lucide-react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Loader2, Factory, AlertCircle, RefreshCw } from 'lucide-react';
 import { formatNumber } from '../charts/chartUtils';
 import { useShell } from '@so360/shell-context';
+import {
+    manufacturingApi,
+    buildManufacturingHeaders,
+    MANUFACTURING_UNAVAILABLE_MESSAGE,
+    type MfgSummary,
+    type WcUtil,
+} from '../../services/manufacturingApi';
 
 /**
  * Manufacturing segment for the Insight Dashboard.
  *
- * Fetches live data from manufacturing-be (port 3034) via the Shell `/manufacturing-api`
- * proxy. Renders KPIs (open MOs, on-time %, scrap %, cost variance, output) and a
- * work-centre OEE bar list. No write paths — read-only widgets.
+ * Fetches live data from manufacturing-be through `manufacturingApi`, which resolves
+ * the backend base URL per environment and validates responses before parsing.
+ * Renders KPIs (open MOs, on-time %, scrap %, cost variance, output) and a work-centre
+ * OEE bar list. No write paths — read-only widgets.
+ *
+ * Failures degrade to a business-friendly state with a Retry action; technical detail
+ * is logged by the API client and never rendered. The 30s poll keeps running, so the
+ * metrics reappear on their own once the service recovers.
  *
  * The Manufacturing module currently aggregates its own metrics (insight-be does not
  * yet have a manufacturing segment). When insight-be adds one, this component can
  * be replaced with the standard `SegmentTabContent` flow.
  */
 
-interface MfgSummary {
-    mo_total: number;
-    mo_in_progress: number;
-    mo_done: number;
-    mo_planned: number;
-    wo_open: number;
-    on_time_pct: number;
-    scrap_pct: number;
-    cost_variance_pct: number;
-    total_produced: number;
-    total_scrap_qty: number;
-}
-interface WcUtil {
-    work_center_id: string;
-    code: string;
-    name: string;
-    wos_total: number;
-    wos_done: number;
-    oee_pct: number;
-    target_pct: number;
-}
+const NO_ORG_MESSAGE = 'Select an organization to view Manufacturing metrics.';
 
 const fmtPct = (n: number) => `${(n ?? 0).toFixed(1)}%`;
 const fmtNum = (n: number) => formatNumber(n ?? 0);
@@ -53,39 +45,39 @@ const Tile: React.FC<{ label: string; value: React.ReactNode; sub?: string; tone
     };
 
 export const ManufacturingSegment: React.FC = () => {
-    const { currentOrg } = useShell();
+    const { currentOrg, accessToken } = useShell();
     const [summary, setSummary] = useState<MfgSummary | null>(null);
     const [util, setUtil] = useState<WcUtil[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    const [reloadKey, setReloadKey] = useState(0);
+    const retry = useCallback(() => setReloadKey((k) => k + 1), []);
+
     useEffect(() => {
         if (!currentOrg?.id) {
             setLoading(false);
-            setError('No active organization selected');
+            setError(NO_ORG_MESSAGE);
             return;
         }
-        const headers = {
-            'Content-Type': 'application/json',
-            'X-Tenant-Id': currentOrg.tenant_id || '',
-            'X-Org-Id': currentOrg.id,
-        };
+        const headers = buildManufacturingHeaders(currentOrg.tenant_id || '', currentOrg.id, accessToken);
         let cancelled = false;
         const load = async () => {
             try {
-                setLoading(true); setError(null);
-                const [sumRes, utilRes] = await Promise.all([
-                    fetch('/manufacturing-api/v1/manufacturing/reports/summary', { headers }),
-                    fetch('/manufacturing-api/v1/manufacturing/reports/work-center-utilisation', { headers }),
+                setLoading(true);
+                const [s, u] = await Promise.all([
+                    manufacturingApi.getSummary(headers),
+                    manufacturingApi.getWorkCenterUtilisation(headers),
                 ]);
-                if (!sumRes.ok) throw new Error(`Summary HTTP ${sumRes.status}`);
-                if (!utilRes.ok) throw new Error(`WC util HTTP ${utilRes.status}`);
-                const [s, u] = await Promise.all([sumRes.json(), utilRes.json()]);
                 if (cancelled) return;
                 setSummary(s);
-                setUtil(u);
-            } catch (e: any) {
-                if (!cancelled) setError(e.message || 'Failed to load Manufacturing metrics');
+                setUtil(Array.isArray(u) ? u : []);
+                // Service recovered — clear the failure state so the poll self-heals.
+                setError(null);
+            } catch {
+                // Detail is already logged by manufacturingApi; the UI only ever
+                // shows the business-friendly message.
+                if (!cancelled) setError(MANUFACTURING_UNAVAILABLE_MESSAGE);
             } finally {
                 if (!cancelled) setLoading(false);
             }
@@ -93,7 +85,7 @@ export const ManufacturingSegment: React.FC = () => {
         load();
         const t = setInterval(load, 30_000);
         return () => { cancelled = true; clearInterval(t); };
-    }, [currentOrg?.id, currentOrg?.tenant_id]);
+    }, [currentOrg?.id, currentOrg?.tenant_id, accessToken, reloadKey]);
 
     if (loading && !summary) {
         return (
@@ -102,16 +94,26 @@ export const ManufacturingSegment: React.FC = () => {
             </div>
         );
     }
-    if (error) {
+    // Only take over the panel when there is nothing to show. If a later poll fails
+    // while data is already on screen, the tiles stay and a slim banner appears.
+    if (error && !summary) {
+        const isNoOrg = error === NO_ORG_MESSAGE;
         return (
-            <div className="m-8 p-6 bg-rose-900/20 border border-rose-500/30 rounded-lg flex items-start gap-4">
-                <AlertCircle className="w-6 h-6 text-rose-400 mt-0.5" />
-                <div>
-                    <h3 className="text-lg font-semibold text-rose-400 mb-1">Manufacturing metrics unavailable</h3>
-                    <p className="text-sm text-rose-300">{error}</p>
-                    <p className="text-xs text-rose-300/60 mt-2">
-                        Ensure the Manufacturing backend is running on port 3034.
-                    </p>
+            <div className="m-8 p-6 bg-slate-900/50 border border-slate-800 rounded-lg flex items-start gap-4">
+                <AlertCircle className="w-6 h-6 text-amber-400 mt-0.5 shrink-0" />
+                <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-slate-100 mb-1">Manufacturing metrics unavailable</h3>
+                    <p className="text-sm text-slate-400">{error}</p>
+                    {!isNoOrg && (
+                        <button
+                            type="button"
+                            onClick={retry}
+                            className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-md border border-slate-700 text-slate-200 hover:bg-slate-800 transition-colors"
+                        >
+                            <RefreshCw className="w-4 h-4" />
+                            Retry
+                        </button>
+                    )}
                 </div>
             </div>
         );
@@ -130,6 +132,23 @@ export const ManufacturingSegment: React.FC = () => {
                     <p className="text-sm text-slate-400">Production execution KPIs · refreshed every 30s</p>
                 </div>
             </div>
+
+            {error && (
+                <div className="p-4 bg-slate-900/50 border border-slate-800 rounded-lg flex items-center gap-3">
+                    <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+                    <p className="text-sm text-slate-400 flex-1">
+                        Showing the last available figures. {error}
+                    </p>
+                    <button
+                        type="button"
+                        onClick={retry}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 text-sm rounded-md border border-slate-700 text-slate-200 hover:bg-slate-800 transition-colors"
+                    >
+                        <RefreshCw className="w-4 h-4" />
+                        Retry
+                    </button>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Tile label="Open MOs" value={summary.mo_in_progress + summary.mo_planned} sub={`${summary.mo_total} total · ${summary.mo_done} done`} />
@@ -178,7 +197,7 @@ export const ManufacturingSegment: React.FC = () => {
             )}
 
             <div className="text-xs text-slate-500 text-center pt-2">
-                Source: <code className="text-slate-400">manufacturing-be</code> on port 3034 · live polling
+                Source: Manufacturing module · live polling
             </div>
         </div>
     );
