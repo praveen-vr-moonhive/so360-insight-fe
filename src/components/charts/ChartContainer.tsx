@@ -31,7 +31,7 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
     const { isFeatureEnabled } = useFeatureFlags();
     const shell = useShellBridge();
     const flagsLoaded = shell?.effectiveFlagsLoaded;
-    const canExport = flagsLoaded && (isFeatureEnabled('action:insight:chart_export') ?? true);
+    const canExport = (shell?.permissionsLoaded === true) && (shell?.hasPermission?.('analytics.export') ?? false) && flagsLoaded && (isFeatureEnabled('action:insight:chart_export') ?? true);
 
     return (
         <div className={`bg-slate-900/50 border border-slate-800 rounded-lg p-6 ${className}`}>
