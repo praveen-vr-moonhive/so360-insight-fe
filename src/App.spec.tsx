@@ -5,6 +5,14 @@ import { MemoryRouter } from 'react-router-dom';
 
 let mockShellBridge: any = {};
 
+// Entitlements default to unrestricted so the flag/routing specs below exercise
+// flag behaviour alone; the permission specs drive this down to a real code set.
+const unrestricted = {
+  permissionsLoaded: true,
+  hasPermission: () => true,
+  hasAnyPermission: () => true,
+};
+
 vi.mock('@so360/shell-context', () => ({
   useShellBridge: () => mockShellBridge,
   useModules: () => ({ isModuleEnabled: () => true }),
@@ -52,6 +60,7 @@ describe('App', () => {
         currentOrg: { id: 'o1' },
         accessToken: 'tok',
         effectiveFlagsLoaded: true,
+        ...unrestricted,
       };
       render(<MemoryRouter initialEntries={['/']}><App /></MemoryRouter>);
       // Route components are React.lazy → resolved asynchronously under Suspense.
@@ -66,6 +75,7 @@ describe('App', () => {
         currentOrg: { id: 'o1' },
         accessToken: 'tok',
         effectiveFlagsLoaded: true,
+        ...unrestricted,
       };
       render(<MemoryRouter initialEntries={['/alerts']}><App /></MemoryRouter>);
       await waitFor(() => {
@@ -80,6 +90,7 @@ describe('App', () => {
       currentOrg: { id: 'o1' },
       accessToken: 'tok',
       effectiveFlagsLoaded: true,
+      ...unrestricted,
       ...overrides,
     });
 
@@ -153,6 +164,58 @@ describe('App', () => {
           expect(dash.getAttribute('data-tab')).toBe('finance');
         });
       });
+    });
+  });
+
+  describe('Given a page gated on role permissions', () => {
+    const bridge = (overrides: Record<string, any> = {}) => ({
+      currentTenant: { id: 't1' },
+      currentOrg: { id: 'o1' },
+      accessToken: 'tok',
+      effectiveFlagsLoaded: true,
+      ...unrestricted,
+      ...overrides,
+    });
+
+    it('When the user holds analytics.view / Then the segment page renders', async () => {
+      mockShellBridge = bridge({ hasAnyPermission: (...c: string[]) => c.includes('analytics.view') });
+      render(<MemoryRouter initialEntries={['/revenue']}><App /></MemoryRouter>);
+      await waitFor(() => {
+        expect(screen.getByTestId('insight-dash').getAttribute('data-tab')).toBe('revenue');
+      });
+      expect(screen.queryByText(/don't have access/i)).not.toBeInTheDocument();
+    });
+
+    it('When the user lacks analytics.view / Then the page is withheld with a notice', async () => {
+      mockShellBridge = bridge({ hasAnyPermission: () => false, hasPermission: () => false });
+      render(<MemoryRouter initialEntries={['/revenue']}><App /></MemoryRouter>);
+      expect(await screen.findByText(/don't have access to this page/i)).toBeInTheDocument();
+      expect(screen.queryByTestId('insight-dash')).not.toBeInTheDocument();
+    });
+
+    it('When the alerts page is opened without analytics.view / Then it is withheld', async () => {
+      mockShellBridge = bridge({ hasAnyPermission: () => false, hasPermission: () => false });
+      render(<MemoryRouter initialEntries={['/alerts']}><App /></MemoryRouter>);
+      expect(await screen.findByText(/don't have access to this page/i)).toBeInTheDocument();
+      expect(screen.queryByText('AlertsPage')).not.toBeInTheDocument();
+    });
+
+    it('When entitlements have not resolved / Then no denial flashes', async () => {
+      mockShellBridge = bridge({ permissionsLoaded: false, hasAnyPermission: () => false });
+      render(<MemoryRouter initialEntries={['/revenue']}><App /></MemoryRouter>);
+      await waitFor(() => {
+        expect(screen.queryByText(/don't have access/i)).not.toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('insight-dash')).not.toBeInTheDocument();
+    });
+
+    it('When the overview is opened with no codes at all / Then it stays reachable', async () => {
+      mockShellBridge = bridge({ hasAnyPermission: () => false, hasPermission: () => false });
+      render(<MemoryRouter initialEntries={['/']}><App /></MemoryRouter>);
+      await waitFor(() => {
+        expect(screen.getByTestId('insight-dash')).toBeInTheDocument();
+      });
+      expect(screen.queryByText(/don't have access/i)).not.toBeInTheDocument();
     });
   });
 });

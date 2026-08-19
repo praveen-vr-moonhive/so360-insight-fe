@@ -55,6 +55,33 @@ const FeatureUnavailable = () => (
     </div>
 );
 
+// Guards a route on the signed-in user's ROLE PERMISSIONS — the page-level
+// counterpart to the plan-flag gate above. A plan flag answers "is this feature
+// in the plan"; this answers "may this user open it". Both must pass, so the two
+// compose rather than replace one another.
+//
+// Fail-closed: while entitlements resolve (or with no bridge at all) the page is
+// withheld rather than flashed. Denial renders an explanatory notice instead of
+// a blank screen so "not allowed" is distinguishable from "broken". Codes are
+// wildcard-aware via the shell bridge, matching the backend resolver exactly.
+const PermissionGuard = ({ permission, children }: { permission: string | string[]; children: React.ReactNode }) => {
+    const shell = useShellBridge();
+    if (!shell || !shell.permissionsLoaded) return null;
+    const codes = Array.isArray(permission) ? permission : [permission];
+    const allowed = shell.hasAnyPermission
+        ? shell.hasAnyPermission(...codes)
+        : codes.some((c: string) => shell.hasPermission?.(c) ?? false);
+    if (allowed) return <>{children}</>;
+    return (
+        <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">You don&apos;t have access to this page</h2>
+            <p className="mt-2 max-w-md text-sm text-slate-600 dark:text-slate-400">
+                Your role doesn&apos;t include permission for this page. Ask an administrator if you need it.
+            </p>
+        </div>
+    );
+};
+
 // Renders InsightDashboard with the correct tab active for path-based routes
 // e.g. /insight/revenue → InsightDashboard with initialTab="revenue"
 // Keeps URL as-is so shell sidenav active state matches correctly.
@@ -86,10 +113,10 @@ function App() {
             <Suspense fallback={<RouteFallback />}>
                 <Routes>
                     <Route path="/" element={<InsightDashboard />} />
-                    <Route path="alerts" element={<AlertsPage />} />
+                    <Route path="alerts" element={<PermissionGuard permission="analytics.view"><AlertsPage /></PermissionGuard>} />
 
                     {/* Path-based segment routes — URL stays as /insight/revenue etc. */}
-                    <Route path=":segmentCode" element={<SegmentRoute />} />
+                    <Route path=":segmentCode" element={<PermissionGuard permission="analytics.view"><SegmentRoute /></PermissionGuard>} />
                 </Routes>
             </Suspense>
         </MfeShellInitializer>
