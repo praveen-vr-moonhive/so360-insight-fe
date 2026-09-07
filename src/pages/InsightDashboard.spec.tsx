@@ -239,4 +239,50 @@ describe('InsightDashboard', () => {
       });
     });
   });
+
+  describe('Given RBAC permissions for financials', () => {
+    it('When user lacks financial permissions / Then hides revenue and finance tabs', async () => {
+      mockShell = {
+        effectiveFlagsLoaded: true,
+        isFeatureEnabled: () => true,
+        isAdmin: false,
+        hasPermission: (p: string) => p !== 'dashboard.financial_kpis' && p !== 'reports.view',
+        hasAnyPermission: (...perms: string[]) => !perms.includes('dashboard.financial_kpis') && !perms.includes('reports.view'),
+      };
+      mockApi.getSegments.mockResolvedValue([]);
+
+      wrap(<InsightDashboard />);
+      await waitFor(() => {
+        expect(screen.getByText('Insight Dashboard')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByTestId('tab-revenue')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('tab-finance')).not.toBeInTheDocument();
+
+      // Reset mockShell
+      mockShell = { effectiveFlagsLoaded: true, isFeatureEnabled: () => true };
+    });
+
+    it('When user has financial permissions / Then shows revenue and finance tabs', async () => {
+      mockShell = {
+        effectiveFlagsLoaded: true,
+        isFeatureEnabled: () => true,
+        isAdmin: false,
+        hasPermission: (p: string) => p === 'dashboard.financial_kpis',
+        hasAnyPermission: (...perms: string[]) => perms.includes('dashboard.financial_kpis'),
+      };
+      mockApi.getSegments.mockResolvedValue([]);
+
+      wrap(<InsightDashboard />);
+      await waitFor(() => {
+        expect(screen.getByText('Insight Dashboard')).toBeInTheDocument();
+      });
+
+      expect(screen.getByTestId('tab-revenue')).toBeInTheDocument();
+      expect(screen.getByTestId('tab-finance')).toBeInTheDocument();
+
+      // Reset mockShell
+      mockShell = { effectiveFlagsLoaded: true, isFeatureEnabled: () => true };
+    });
+  });
 });

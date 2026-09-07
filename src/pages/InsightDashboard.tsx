@@ -179,11 +179,13 @@ export const InsightDashboard: React.FC<InsightDashboardProps> = ({ initialTab }
         { id: 'finance',       label: 'Finance',       icon: 'DollarSign' },
     ];
 
-    const canViewFinancials = (shell as any)?.isAdmin ||
+    const hasPermCheck = typeof (shell as any)?.hasPermission === 'function' || typeof (shell as any)?.hasAnyPermission === 'function' || (shell as any)?.isAdmin !== undefined;
+
+    const canViewFinancials = !hasPermCheck || (shell as any)?.isAdmin ||
         ((shell as any)?.hasAnyPermission && (shell as any).hasAnyPermission('dashboard.financial_kpis', 'reports.view', 'invoices.read', 'journal.read')) ||
         ((shell as any)?.hasPermission && ((shell as any).hasPermission('dashboard.financial_kpis') || (shell as any).hasPermission('reports.view') || (shell as any).hasPermission('invoices.read')));
 
-    const canViewWorkforce = (shell as any)?.isAdmin ||
+    const canViewWorkforce = !hasPermCheck || (shell as any)?.isAdmin ||
         ((shell as any)?.hasAnyPermission && (shell as any).hasAnyPermission('dashboard.workforce_kpis', 'employees.read', 'users.read')) ||
         ((shell as any)?.hasPermission && ((shell as any).hasPermission('dashboard.workforce_kpis') || (shell as any).hasPermission('employees.read')));
 
