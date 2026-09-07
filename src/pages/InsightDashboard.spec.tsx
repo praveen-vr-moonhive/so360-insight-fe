@@ -246,8 +246,8 @@ describe('InsightDashboard', () => {
         effectiveFlagsLoaded: true,
         isFeatureEnabled: () => true,
         isAdmin: false,
-        hasPermission: (p: string) => p !== 'dashboard.financial_kpis' && p !== 'reports.view',
-        hasAnyPermission: (...perms: string[]) => !perms.includes('dashboard.financial_kpis') && !perms.includes('reports.view'),
+        hasPermission: (p: string) => !['dashboard.financial_kpis', 'reports.view', 'invoices.read', 'journal.read'].includes(p),
+        hasAnyPermission: (...perms: string[]) => perms.some(p => !['dashboard.financial_kpis', 'reports.view', 'invoices.read', 'journal.read'].includes(p) && false),
       };
       mockApi.getSegments.mockResolvedValue([]);
 
